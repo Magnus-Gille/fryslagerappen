@@ -6,12 +6,17 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { Pressable, useColorScheme, useWindowDimensions, View, StyleSheet } from 'react-native';
+import { useSyncExternalStore } from 'react';
+import { Pressable, useWindowDimensions, View, StyleSheet } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+import { shouldUseCompactNavigation } from './responsive-navigation';
 
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const subscribeToHydration = () => () => {};
 
 export default function AppTabs() {
   return (
@@ -49,7 +54,8 @@ export function CustomTabList(props: TabListProps) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
   const { width } = useWindowDimensions();
-  const compact = width < 600;
+  const hasHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+  const compact = shouldUseCompactNavigation(width, hasHydrated);
 
   return (
     <View {...props} style={styles.tabListContainer}>
