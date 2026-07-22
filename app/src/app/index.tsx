@@ -43,7 +43,7 @@ export default function HomeScreen() {
               <ThemedText type="smallBold" style={{ color: theme.primary }}>
                 MITT HUSHÅLL
               </ThemedText>
-              <ThemedText type="title">Vad finns i frysen?</ThemedText>
+              <ThemedText type="title">Vad finns hemma?</ThemedText>
               <View style={styles.syncRow}>
                 <View style={[styles.syncDot, { backgroundColor: theme.successText }]} />
                 <ThemedText type="caption" themeColor="textTertiary">
@@ -152,7 +152,7 @@ export default function HomeScreen() {
                 <ThemedText style={styles.emptyEmoji}>🧊</ThemedText>
                 <ThemedText type="itemTitle">Inget matchade</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyCopy}>
-                  Prova ett annat ord eller välj en annan frysplats.
+                  Prova ett annat ord eller välj en annan förvaringsplats.
                 </ThemedText>
               </View>
             ) : (

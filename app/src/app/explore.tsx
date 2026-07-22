@@ -38,7 +38,7 @@ export default function HistoryScreen() {
 
           <View style={styles.statsRow}>
             <StatCard value={String(activeItems.length)} label="Aktiva varor" />
-            <StatCard value={String(state.locations.length)} label="Frysplatser" />
+            <StatCard value={String(state.locations.length)} label="Förvaringsplatser" />
             <StatCard value={String(state.events.length)} label="Ändringar nu" />
           </View>
 

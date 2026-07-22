@@ -46,7 +46,7 @@ export function CaptureFlow({ mode, onComplete }: { mode: 'photo' | 'voice'; onC
     <View style={styles.review}>
       {photo && <Image source={{ uri: photo.uri }} style={styles.preview} contentFit="cover" />}
       <ThemedText type="sectionTitle">Lägg till en kort beskrivning?</ThemedText>
-      <ThemedText themeColor="textSecondary" style={styles.center}>Rösten hjälper när etiketten inte berättar mängd, plats eller om du tar något ur frysen.</ThemedText>
+      <ThemedText themeColor="textSecondary" style={styles.center}>Rösten hjälper när etiketten inte berättar mängd, plats eller om du tar något ur lagret.</ThemedText>
       {error && <ThemedText type="small" style={{ color: theme.warningText }}>{error}</ThemedText>}
       <Pressable accessibilityRole="button" onPress={() => setWantVoice(true)} style={[styles.primary, { backgroundColor: theme.primary }]}><ThemedText type="smallBold" style={styles.white}>🎙️ Beskriv med rösten</ThemedText></Pressable>
       <Pressable accessibilityRole="button" onPress={() => analyze()} style={[styles.secondary, { borderColor: theme.border }]}><ThemedText type="smallBold">Analysera bara fotot</ThemedText></Pressable>

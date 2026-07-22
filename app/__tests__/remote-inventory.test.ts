@@ -31,7 +31,7 @@ describe('remote inventory mapping', () => {
 
   it('maps a location row', () => {
     expect(
-      locationFromRow({ id: 'location-1', name: 'Frysen uppe', description: 'Köket' }),
-    ).toEqual({ id: 'location-1', name: 'Frysen uppe', description: 'Köket' });
+      locationFromRow({ id: 'location-1', name: 'Hyllan i ateljén', description: 'Torrvaror' }),
+    ).toEqual({ id: 'location-1', name: 'Hyllan i ateljén', description: 'Torrvaror' });
   });
 });

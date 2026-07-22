@@ -8,6 +8,24 @@ import {
 } from '../src/features/inventory/inventory-state';
 
 describe('inventory state', () => {
+  it('starts with freezer and dry-storage locations on both floors', () => {
+    const state = createInventoryState();
+
+    expect(state.locations.map((location) => location.name)).toEqual([
+      'Frysen på övervåningen',
+      'Frysen i källaren',
+      'Hyllan på övervåningen',
+      'Hyllan i ateljén',
+    ]);
+    expect(state.items).toContainEqual(
+      expect.objectContaining({
+        name: 'Pasta',
+        category: 'Torrvaror',
+        locationId: 'studio-shelf',
+      }),
+    );
+  });
+
   it('searches active items across names and categories', () => {
     const state = createInventoryState();
 

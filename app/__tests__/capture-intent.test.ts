@@ -10,7 +10,7 @@ describe('capture intent', () => {
       category: 'Frukt & bär',
       quantity: 2,
       unit: 'burkar',
-      locationName: 'Frysboxen nere',
+      locationName: 'Hyllan i ateljén',
       frozenOn: '2026-07-22',
       eatBefore: null,
       dateSource: 'label',
@@ -21,12 +21,12 @@ describe('capture intent', () => {
 
     expect(
       toAddItemInput(intent, [
-        { id: 'upstairs', name: 'Frysen uppe', description: '' },
-        { id: 'downstairs', name: 'Frysboxen nere', description: '' },
+        { id: 'upstairs', name: 'Frysen på övervåningen', description: '' },
+        { id: 'studio-shelf', name: 'Hyllan i ateljén', description: '' },
       ]),
     ).toMatchObject({
       name: 'Blåbärssylt',
-      locationId: 'downstairs',
+      locationId: 'studio-shelf',
       quantity: 2,
     });
   });
@@ -60,15 +60,15 @@ describe('capture intent', () => {
     });
 
     expect(
-      toAddItemInput(intent, [{ id: 'upstairs', name: 'Frysen uppe', description: '' }]).locationId,
+      toAddItemInput(intent, [{ id: 'upstairs', name: 'Frysen på övervåningen', description: '' }]).locationId,
     ).toBe('upstairs');
   });
 
   it('does not silently resolve an unknown move destination', () => {
     expect(
       findLocationId('Skafferiet', [
-        { id: 'upstairs', name: 'Frysen uppe', description: '' },
-        { id: 'downstairs', name: 'Frysboxen nere', description: '' },
+        { id: 'upstairs', name: 'Frysen på övervåningen', description: '' },
+        { id: 'downstairs', name: 'Frysen i källaren', description: '' },
       ]),
     ).toBeUndefined();
   });

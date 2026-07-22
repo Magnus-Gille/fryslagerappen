@@ -1,10 +1,10 @@
 # Fryslagerappen
 
-En delad, iPhone-först frysinventering som ska göra det snabbt att registrera,
-hitta och äta upp mat innan den glöms bort.
+En delad, iPhone-först hushållsinventering för frys- och torrvaror som ska göra
+det snabbt att registrera, hitta och använda mat innan den glöms bort.
 
 Projektet är i produktgrund- och prototypfas. Kärnan är en lågfriktionsupplevelse
-med foto, svensk röstinmatning, flera frysplatser, delning mellan
+med foto, svensk röstinmatning, flera förvaringsplatser, delning mellan
 hushållsmedlemmar och tydligt markerade "ät snart"-rekommendationer.
 
 ## Dokument

@@ -42,7 +42,7 @@ export function AuthScreen() {
           <View style={styles.heading}>
             <ThemedText type="smallBold" style={{ color: theme.primary }}>FRYSLAGERAPPEN</ThemedText>
             <ThemedText type="title">Ett lager för hela hushållet</ThemedText>
-            <ThemedText themeColor="textSecondary">Logga in för att synka frysen säkert mellan era telefoner.</ThemedText>
+            <ThemedText themeColor="textSecondary">Logga in för att synka hushållets lager säkert mellan era telefoner.</ThemedText>
           </View>
           <TextInput
             accessibilityLabel="E-postadress"

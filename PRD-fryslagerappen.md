@@ -1,6 +1,6 @@
 # PRD: Fryslagerappen
 
-- **Status:** Utkast v0.1
+- **Status:** Utkast v0.2
 - **Datum:** 2026-07-22
 - **Produktnamn:** Arbetsnamn *Fryslagerappen*
 - **Primär plattform:** iPhone
@@ -9,18 +9,18 @@
 
 ## 1. Sammanfattning
 
-Fryslagerappen ska ge ett hushåll en gemensam, aktuell och lättillgänglig bild av vad som finns i hemmets frysar. Den ska särskilt lösa problemet med egenlagad och egenplockad mat — till exempel sylt, mos, bär och grytor — som annars blir bortglömd, samt hjälpa familjen att undvika onödiga inköp av varor som redan finns hemma.
+Fryslagerappen ska ge ett hushåll en gemensam, aktuell och lättillgänglig bild av vad som finns i hemmets frysar och torrförråd. Den ska särskilt lösa problemet med egenlagad, egenplockad och lagrad mat — till exempel sylt, mos, bär, grytor, pasta och konserver — som annars blir bortglömd, samt hjälpa familjen att undvika onödiga inköp av varor som redan finns hemma.
 
 Produktens viktigaste egenskap är inte maximal registreringsprecision utan **extremt låg arbetsinsats**. Om varje förändring kräver mycket skrivande kommer registret inte att hållas aktuellt. Därför ska ett föremål kunna registreras med foto och/eller svensk talinmatning, med AI-stöd för att föreslå namn, kategori, datum, placering och hållbarhet. Användaren ska i normalfallet bara behöva kontrollera förslaget och bekräfta.
 
 MVP:n ska stödja:
 
-- två eller flera namngivna frysplatser, initialt ”Frysen uppe” och ”Frysboxen nere”;
+- fyra namngivna förvaringsplatser: ”Frysen på övervåningen”, ”Frysen i källaren”, ”Hyllan på övervåningen” och ”Hyllan i ateljén”;
 - ett delat hushåll med minst två iPhone-användare;
 - snabb registrering med foto, röst eller en kombination av båda;
 - ett sökbart lager som fungerar hemma och i butiken;
-- hantering av mängd, infrysningsdatum och bäst före-/ät-snart-information;
-- snabb borttagning eller mängdminskning när mat tas ur frysen;
+- hantering av mängd, lagringsdatum och bäst före-/ät-snart-information;
+- snabb borttagning eller mängdminskning när mat tas ur lagret;
 - synk mellan användarnas telefoner;
 - ett enkelt webbläge för överblick, åtminstone som läsbar vy efter MVP om det hotar leveranstiden.
 
@@ -50,7 +50,7 @@ En mobil, delad inventering med foto- och röstinmatning kan göra det lika enke
 
 ### 3.1 Produktmål
 
-- Ge hushållet en tillförlitlig överblick över frysarnas innehåll och placering.
+- Ge hushållet en tillförlitlig överblick över frysarnas och torrförrådens innehåll och placering.
 - Göra registrering av en ny vara till en handling som normalt tar högst 10–15 sekunder.
 - Göra det möjligt att svara på ”Har vi X hemma?” på några sekunder.
 - Hjälpa användarna att prioritera mat som bör ätas snart.
@@ -60,7 +60,7 @@ En mobil, delad inventering med foto- och röstinmatning kan göra det lika enke
 ### 3.2 Icke-mål för MVP
 
 - Fullständigt inköps-, recept- eller måltidsplaneringssystem.
-- Hantering av kylskåp, skafferi eller andra lagerplatser utanför frysen.
+- Hantering av kylskåp eller andra lagerplatser utöver de definierade frysarna och torrhyllorna.
 - Automatisk fysisk identifiering via streckkodsläsare, vågar, RFID eller sensorer.
 - Exakt livsmedelssäkerhetsbedömning eller garanti att en vara är säker att äta.
 - Integration med matbutiker, kassakvitton eller leveranstjänster.
@@ -104,7 +104,7 @@ Behöver kunna markera en vara som förbrukad eller minska mängden med ett tryc
 ### 6.1 Must have — MVP
 
 - Skapa eller ansluta till ett delat hushåll.
-- Skapa och namnge flera frysplatser.
+- Skapa och namnge flera förvaringsplatser för frys- och torrvaror.
 - Registrera vara med foto, tal eller manuell text.
 - Svensk taligenkänning.
 - Bildtolkning/OCR för etikett, produktnamn och synliga datum.
@@ -140,7 +140,7 @@ Behöver kunna markera en vara som förbrukad eller minska mängden med ett tryc
 ### 7.1 Första start och hushåll
 
 1. Första användaren skapar ett hushåll.
-2. Appen föreslår två platser: ”Frysen uppe” och ”Frysboxen nere”. Namnen kan ändras och fler platser kan läggas till.
+2. Appen skapar fyra platser: ”Frysen på övervåningen”, ”Frysen i källaren”, ”Hyllan på övervåningen” och ”Hyllan i ateljén”.
 3. Användaren bjuder in en annan hushållsmedlem via systemets delningsfunktion eller länk.
 4. Den inbjudna användaren accepterar och ser samma lager.
 5. Båda kan lägga till, ändra och ta bort varor.
@@ -149,13 +149,13 @@ Behöver kunna markera en vara som förbrukad eller minska mängden med ett tryc
 
 1. Användaren öppnar appen och trycker på den tydliga knappen **Lägg till**.
 2. Användaren fotograferar varan och dess handskrivna eller tryckta etikett.
-3. Användaren kan samtidigt eller därefter säga exempelvis: ”Två burkar blåbärssylt, gjord i juli, läggs i frysboxen nere.”
+3. Användaren kan samtidigt eller därefter säga exempelvis: ”Två paket pasta läggs på hyllan i ateljén.”
 4. Appen kombinerar bild, OCR och tal för att föreslå:
    - namn;
    - kategori;
    - mängd och enhet;
-   - frysplats;
-   - infrysnings-/tillagningsdatum;
+   - förvaringsplats;
+   - lagrings-/tillagningsdatum;
    - känt bäst före-datum eller uppskattat ”ät före”.
 5. En kompakt bekräftelsevy visar förslaget. Osäkra fält markeras.
 6. Användaren trycker **Spara** eller rättar ett fält och sparar.
@@ -203,9 +203,9 @@ Detta flöde är viktigt när kameran är opraktisk eller när varan redan har e
 - Det ska framgå vem som senast ändrade en post och när.
 - En borttagen medlem ska förlora åtkomst till framtida data.
 
-### FR-2: Frysplatser
+### FR-2: Förvaringsplatser
 
-- Hushållet ska kunna skapa, byta namn på och arkivera frysplatser.
+- Hushållet ska kunna använda namngivna frys- och torrförvaringsplatser.
 - Varje aktiv lagerpost ska tillhöra exakt en plats.
 - En vara ska kunna flyttas mellan platser utan att skapas på nytt.
 - Sökresultat ska kunna filtreras per plats.
@@ -216,7 +216,7 @@ Detta flöde är viktigt när kameran är opraktisk eller när varan redan har e
 - Taligenkänning ska stödja svenska och vanliga svenska livsmedelsord.
 - Ett AI-genererat förslag ska alltid kunna granskas före slutligt sparande.
 - Användaren ska kunna spara även om endast namn och plats är kända.
-- Appen ska minnas senast använda frysplats under den pågående registreringssessionen för snabb serieinmatning.
+- Appen ska minnas senast använda förvaringsplats under den pågående registreringssessionen för snabb serieinmatning.
 
 ### FR-4: Bild och OCR
 
@@ -282,7 +282,7 @@ Detta flöde är viktigt när kameran är opraktisk eller när varan redan har e
 - skapad tid
 - inställningar för språk, notiser och standardenheter
 
-### 9.2 Frysplats
+### 9.2 Förvaringsplats
 
 - `location_id`
 - `household_id`
@@ -301,7 +301,7 @@ Detta flöde är viktigt när kameran är opraktisk eller när varan redan har e
 - mängd och enhet
 - foto/foton
 - anteckning och originaltranskription
-- infrysnings-/tillagningsdatum
+- lagrings-/tillagningsdatum
 - bäst före-datum
 - uppskattat ”ät före” och uppskattningens underlag
 - datumkälla och konfidens
@@ -388,7 +388,7 @@ Måttet speglar produktens mål, men kräver att användarna faktiskt markerar f
 
 ### 12.2 Aktiveringsmått
 
-- Hushållet har minst två skapade frysplatser.
+- Hushållet har de fyra skapade standardplatserna för frys- och torrvaror.
 - Minst två användare har anslutit.
 - Minst fem varor har registrerats.
 - Minst en användare har genomfört en sökning efter registrering.
@@ -416,9 +416,9 @@ Måttet speglar produktens mål, men kräver att användarna faktiskt markerar f
 
 MVP:n är produktmässigt godkänd när följande scenario fungerar från början till slut:
 
-1. Hushållsmedlem A skapar hushållet och platserna ”Frysen uppe” och ”Frysboxen nere”.
+1. Hushållsmedlem A skapar hushållet och får de fyra standardplatserna för frys- och torrvaror.
 2. Hushållsmedlem B ansluter från sin iPhone och ser samma tomma lager.
-3. Hushållsmedlem B fotograferar en handskriven etikett, säger ”Två burkar blåbärssylt i frysboxen nere, gjord i juli” och får ett rimligt strukturerat förslag.
+3. Hushållsmedlem B fotograferar en etikett, säger ”Två paket pasta på hyllan i ateljén” och får ett rimligt strukturerat förslag.
 4. Hushållsmedlem B kan tydligt se och rätta osäkra datum innan posten sparas.
 5. Posten visas på hushållsmedlem A:s telefon inom fem sekunder när båda är online.
 6. Hushållsmedlem A söker efter ”blåbär” och ser mängd, plats, foto och datumstatus.
@@ -451,7 +451,7 @@ MVP:n är produktmässigt godkänd när följande scenario fungerar från börja
 
 ### Fas 1: lokal iPhone-MVP
 
-- Två frysplatser.
+- Fyra förvaringsplatser: två frysar och två torrhyllor.
 - Registrering, foto, svensk röst, manuell rättning.
 - Lokal sökning, datum och förbrukning.
 - Ingen delning ännu; fokus på att bevisa att datan går att hålla aktuell.
@@ -498,7 +498,7 @@ Följande behöver beslutas eller valideras före full implementation:
 | 02:00–02:28 | Låg motivation att underhålla registret; foto och tal kan fungera | Foto/röst först, max 10–15 sekunder, minimalt skrivande |
 | 02:36–03:56 | Analog lista är möjlig men saknar fjärråtkomst från kök och butik | Mobil, delad digital inventering med offlinestöd |
 | 03:56–04:16 | Mobilapp med foto och diktafon; handskrivna lappar med datum | Bild, svensk röst, OCR och tydlig datumhantering |
-| 04:16–04:47 | Två frysar, två iPhone-användare, synk och eventuell webb | Frysplatser, hushållsdelning, synk och webbvy |
+| 04:16–04:47 | Två frysar, två iPhone-användare, synk och eventuell webb | Förvaringsplatser, hushållsdelning, synk och webbvy |
 | 04:48–05:27 | Minska matsvinn; läs, tala eller gissa bäst före | ”Ät snart”, datumkällor, OCR/röst och tydligt markerad uppskattning |
 
 ## 18. Antaganden som inte är uttryckliga krav

@@ -37,8 +37,10 @@ routerAdd("POST", "/api/iceage/households", (e) => {
     householdId = household.id;
 
     for (const locationData of [
-      { name: "Frysen uppe", description: "Köket", position: 0 },
-      { name: "Frysboxen nere", description: "Källaren", position: 1 },
+      { name: "Frysen på övervåningen", description: "Övervåningen", position: 0 },
+      { name: "Frysen i källaren", description: "Källaren", position: 1 },
+      { name: "Hyllan på övervåningen", description: "Torrvaror på övervåningen", position: 2 },
+      { name: "Hyllan i ateljén", description: "Torrvaror i ateljén", position: 3 },
     ]) {
       const location = new Record(txApp.findCollectionByNameOrId(lib.collections.locations));
       location.set("household", household.id);
@@ -106,7 +108,7 @@ routerAdd("POST", "/api/iceage/items", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
   const householdId = lib.household(e);
   const body = lib.body(e);
-  const locationId = lib.text(body.locationId, "frysplats", 32);
+  const locationId = lib.text(body.locationId, "förvaringsplats", 32);
   lib.location(e.app, locationId, householdId);
   const dateSource = String(body.dateSource || "none");
   if (!["manual", "label", "estimated", "none"].includes(dateSource)) {
@@ -162,7 +164,7 @@ routerAdd("POST", "/api/iceage/items/{id}/mutate", (e) => {
         eventType = "consumed";
       }
     } else if (action === "move") {
-      const locationId = lib.text(body.locationId, "frysplats", 32);
+      const locationId = lib.text(body.locationId, "förvaringsplats", 32);
       lib.location(txApp, locationId, householdId);
       item.set("location", locationId);
       eventType = "moved";
@@ -191,7 +193,6 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
   const householdId = lib.household(e);
   const body = lib.body(e);
   if (String(body.householdId || "") !== householdId) throw new ForbiddenError();
-  lib.consumeExtractionQuota(e.app, e.auth.id);
 
   const photoBase64 = String(body.photoBase64 || "");
   const photoMimeType = String(body.photoMimeType || "image/jpeg");
@@ -199,8 +200,12 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
   if (photoBase64 && !["image/jpeg", "image/png", "image/webp"].includes(photoMimeType)) {
     throw new BadRequestError("Bildformatet stöds inte.");
   }
-  const audioFiles = lib.optionalUploadedFiles(e, "audio");
+  const audioFiles = lib.uploadedFiles(e, "audio");
   if (audioFiles.length > 1) throw new BadRequestError("Skicka högst ett ljudklipp.");
+  if (!photoBase64 && audioFiles.length === 0) {
+    throw new BadRequestError("Ta en bild eller spela in en beskrivning.");
+  }
+  lib.consumeExtractionQuota(e.app, e.auth.id);
   const transcript = audioFiles.length === 1 ? lib.transcribe(audioFiles[0]) : "";
   if (!photoBase64 && !transcript) throw new BadRequestError("Ta en bild eller spela in en beskrivning.");
 
@@ -208,7 +213,7 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
   const items = e.app.findRecordsByFilter(lib.collections.items, "household = {:household} && status = 'active'", "-updated", 200, 0, { household: householdId });
   const context = [
     "Datum: " + new Date().toISOString().slice(0, 10) + ".",
-    "Frysplatser: " + locations.map((location) => location.getString("name")).join(", ") + ".",
+    "Förvaringsplatser: " + locations.map((location) => location.getString("name")).join(", ") + ".",
     "Aktivt lager: " + JSON.stringify(items.map((item) => ({
       name: item.getString("name"),
       quantity: item.getFloat("quantity"),

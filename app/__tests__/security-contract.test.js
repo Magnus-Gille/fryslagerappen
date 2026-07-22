@@ -14,6 +14,10 @@ const helpers = fs.readFileSync(
   path.join(__dirname, '../../backend/pb_hooks/lib/iceage.js'),
   'utf8',
 );
+const captureService = fs.readFileSync(
+  path.join(__dirname, '../src/features/capture/capture-service.ts'),
+  'utf8',
+);
 const forwardMigration = migration.split('}, (app) => {')[0];
 const pagesWorkflow = fs.readFileSync(
   path.join(__dirname, '../../.github/workflows/deploy-pages.yml'),
@@ -30,6 +34,11 @@ describe('M5 backend security contract', () => {
     expect(migration).toContain('users.createRule = null');
     expect(forwardMigration).toContain('users.updateRule = null');
     expect(forwardMigration).toContain('users.deleteRule = null');
+    for (const collection of ['households', 'locations', 'items', 'events', 'invitations', 'quotas']) {
+      expect(forwardMigration).not.toContain(`${collection}.createRule =`);
+      expect(forwardMigration).not.toContain(`${collection}.updateRule =`);
+      expect(forwardMigration).not.toContain(`${collection}.deleteRule =`);
+    }
   });
 
   it('keeps writes behind authenticated custom routes and owner-only invitations', () => {
@@ -49,10 +58,11 @@ describe('M5 backend security contract', () => {
   });
 
   it('allows camera-only JSON requests without requiring an audio upload', () => {
-    expect(hooks).toContain('lib.optionalUploadedFiles(e, "audio")');
-    expect(helpers).toContain('function optionalUploadedFiles(e, field)');
+    expect(hooks).toContain('lib.uploadedFiles(e, "audio")');
+    expect(helpers).toContain('function uploadedFiles(e, field)');
     expect(helpers).toContain('startsWith("multipart/form-data")');
-    expect(helpers).toContain('http: no such file');
+    expect(helpers).not.toContain('http: no such file');
+    expect(captureService).toContain('if (!input.audioUri)');
   });
 
   it('does not publish the private tailnet endpoint in the public web bundle', () => {
