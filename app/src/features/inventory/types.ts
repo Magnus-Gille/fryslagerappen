@@ -60,8 +60,10 @@ export type AddItemInput = Pick<
 >;
 
 export type InventoryAction =
+  | { type: 'stateReplaced'; payload: InventoryState }
   | { type: 'itemAdded'; payload: AddItemInput }
   | { type: 'quantityDecremented'; itemId: string }
+  | { type: 'quantityRemoved'; itemId: string; quantity: number }
   | { type: 'itemMoved'; itemId: string; locationId: string }
   | { type: 'itemConsumed'; itemId: string }
   | { type: 'itemRestored'; itemId: string };

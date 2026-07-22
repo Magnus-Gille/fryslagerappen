@@ -69,6 +69,8 @@ function updateItem(
 
 export function inventoryReducer(state: InventoryState, action: InventoryAction): InventoryState {
   switch (action.type) {
+    case 'stateReplaced':
+      return action.payload;
     case 'itemAdded': {
       const occurredAt = new Date().toISOString();
       const visual = itemVisual(action.payload.category);
@@ -92,6 +94,12 @@ export function inventoryReducer(state: InventoryState, action: InventoryAction)
         ...item,
         quantity: Math.max(0, item.quantity - 1),
         status: item.quantity <= 1 ? 'consumed' : item.status,
+      }));
+    case 'quantityRemoved':
+      return updateItem(state, action.itemId, 'quantityChanged', (item) => ({
+        ...item,
+        quantity: Math.max(0, item.quantity - action.quantity),
+        status: item.quantity <= action.quantity ? 'consumed' : item.status,
       }));
     case 'itemMoved':
       return updateItem(state, action.itemId, 'moved', (item) => ({
