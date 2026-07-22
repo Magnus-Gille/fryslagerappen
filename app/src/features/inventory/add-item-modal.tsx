@@ -21,10 +21,11 @@ import { useInventory } from './inventory-provider';
 import { storagePlaceLabel } from './storage-place';
 import type { AddItemInput } from './types';
 
-type CaptureMode = 'photo' | 'voice' | 'manual';
+export type CaptureMode = 'photo' | 'voice' | 'manual';
 
 type Props = {
   visible: boolean;
+  initialMode?: CaptureMode;
   onClose: () => void;
 };
 
@@ -41,16 +42,17 @@ const manualSuggestion: Omit<AddItemInput, 'locationId'> = {
   note: '',
 };
 
-export function AddItemModal({ visible, onClose }: Props) {
+export function AddItemModal({ visible, initialMode, onClose }: Props) {
   const theme = useTheme();
   const { state, addItem, removeQuantity, moveItem, consumeItem } = useInventory();
-  const [mode, setMode] = useState<CaptureMode | null>(null);
+  const [mode, setMode] = useState<CaptureMode | null>(initialMode ?? null);
   const [intent, setIntent] = useState<CaptureIntent | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [form, setForm] = useState<AddItemInput>({
     ...manualSuggestion,
-    locationId: 'upstairs',
+    locationId:
+      initialMode === 'manual' ? (state.locations[0]?.id ?? 'upstairs') : 'upstairs',
   });
 
   function chooseMode(nextMode: CaptureMode) {
