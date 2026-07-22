@@ -166,7 +166,7 @@ innan backend byggs.
 
 **Omfattning**
 
-- Supabase Auth, Postgres, Storage och Row Level Security.
+- Självhostad PocketBase på M5 med auth, hushållsregler och realtid.
 - Skapa hushåll och säker inbjudan till en medlem.
 - Delta-synk mellan SQLite och backend.
 - Realtime-uppdatering, retry och konflikthantering.

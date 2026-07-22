@@ -18,7 +18,8 @@ hushållsmedlemmar och tydligt markerade "ät snart"-rekommendationer.
 - Expo SDK 57 / React Native 0.86 / React 19
 - TypeScript och Expo Router för iPhone och en framtida webbvy
 - Expo SQLite för lokal/offline data
-- Supabase för autentisering, lagring, delning och synk
+- Självhostad PocketBase på M5 för autentisering, behörighet, lagring och realtid
+- Lokal Whisper och multimodal modell på M5, med Orin Nano som valfri worker
 - Jest, React Native Testing Library och ESLint
 - Expo Dev Client och EAS-konfiguration för utvecklingsbyggen
 
@@ -36,8 +37,9 @@ npm run ios
 ```
 
 Appen använder inga produktionshemligheter i repot. Kopiera
-`app/.env.example` till `app/.env.local` när en separat utvecklingsmiljö i
-Supabase har skapats.
+`app/.env.example` till `app/.env.local` och ange den tailnet-privata HTTPS-URL
+som `scripts/deploy-m5.sh` skapar. Konton, media och lagerdata lämnar inte den
+privata infrastrukturen.
 
 ## Licens
 

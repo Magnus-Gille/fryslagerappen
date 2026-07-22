@@ -1,0 +1,22 @@
+[Unit]
+Description=Fryslagerappen PocketBase backend
+After=network-online.target tailscaled.service llama-swap.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/iceage/backend.env
+WorkingDirectory=%h/.local/opt/iceage/current
+ExecStart=%h/.local/opt/iceage/current/pocketbase serve --http=127.0.0.1:8090 --dir %h/.local/share/iceage/pb_data --hooksDir %h/.local/opt/iceage/current/pb_hooks --migrationsDir %h/.local/opt/iceage/current/pb_migrations --automigrate=false --encryptionEnv ICEAGE_PB_ENCRYPTION_KEY --origins=https://magnus-gille.github.io,http://localhost:8081,http://localhost:19006
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/share/iceage
+MemoryMax=512M
+
+[Install]
+WantedBy=default.target

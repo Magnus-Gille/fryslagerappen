@@ -18,7 +18,8 @@ Node.js 24.18.0 LTS används. Node 26 är installerad på utvecklingsmaskinen me
 - `expo-notifications`: valbara "ät snart"-påminnelser
 - `expo-network`: nätverksmedveten synk
 - `expo-dev-client`: iPhone-utvecklingsbygge med native moduler
-- `@supabase/supabase-js`: autentisering, Postgres, Edge Functions och Realtime
+- `pocketbase`: klient för autentisering, hushållsbehörighet, data och realtime
+- `react-native-sse`: realtime-transport i React Native
 - `@tanstack/react-query`: server-state och synkstatus
 - `zod`: validering vid app- och API-gränser
 - Jest, React Native Testing Library och ESLint: automatiska kvalitetskontroller
@@ -34,7 +35,7 @@ ska hållas utbytbara.
 - npm 11
 - CocoaPods 1.17 eller senare för lokala native iOS-byggen
 - Ett Apple-utvecklarkonto först när fysisk distribution krävs
-- En separat Supabase-utvecklingsmiljö från Epic 3
+- Tailscale-åtkomst till M5 för det autentiserade läget
 
 Appidentifierarna i `app/app.json` använder `ai.gille.fryslagerappen` för både
 iOS och Android.
@@ -57,33 +58,33 @@ npm install
 cp .env.example .env.local
 ```
 
-Fyll inte i produktionshemligheter. Klientens Supabase-nyckel ska vara en
-publik publishable-nyckel; databasen skyddas med Row Level Security.
+Fyll inte i produktionshemligheter. `EXPO_PUBLIC_ICEAGE_API_URL` är endast den
+tailnet-privata serveradressen; PocketBase adminuppgifter och
+inferencekonfiguration stannar på M5.
 
-## Supabase, autentisering och AI-tolkning
+## M5, autentisering och AI-tolkning
 
-1. Skapa ett separat Supabase-projekt och länka repot med Supabase CLI.
-2. Kör migreringen i `supabase/migrations/`.
-3. Lägg projektets URL och publishable key i `app/.env.local`.
-4. Sätt `OPENAI_API_KEY` och en slumpad `SAFETY_SALT` som Supabase project
-   secrets. De får aldrig använda prefixet `EXPO_PUBLIC_`.
-5. Deploya `extract-inventory` med JWT-verifiering aktiverad.
+1. Kontrollera att telefonen och utvecklingsmaskinen är anslutna till Magnus
+   Tailscale-tailnet.
+2. Deploya den pinnade, checksummeverifierade PocketBase-versionen till M5.
+3. Lägg M5:s Tailscale Serve-URL i `app/.env.local`.
+4. Sätt samma URL som GitHub Actions-variabeln
+   `EXPO_PUBLIC_ICEAGE_API_URL` för webbbygget.
 
 ```bash
-supabase db push
-supabase secrets set OPENAI_API_KEY=... SAFETY_SALT=...
-supabase functions deploy extract-inventory
+./scripts/deploy-m5.sh
+printf '%s\n' 'EXPO_PUBLIC_ICEAGE_API_URL=https://m5.example-tailnet.ts.net' > app/.env.local
 ```
 
-Sätt samma två publika Supabase-värden som GitHub Actions-secrets med namnen
-`EXPO_PUBLIC_SUPABASE_URL` och `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` för
-webbdeploymenten. Om värdena saknas kör appen det befintliga lokala demoläget;
-foto, röst, inloggning och delning är då avsiktligt avstängda.
+Om URL:en saknas kör appen det befintliga lokala demoläget; foto, röst,
+inloggning och delning är då avsiktligt avstängda.
 
-Autentisering sker med e-post och lösenord via Supabase Auth. Native-sessionen
-lagras i iOS Keychain/Android Keystore via `expo-secure-store`. Varje databasrad
-kontrolleras mot hushållsmedlemskap av RLS. Foto och ljud skickas till den
-autentiserade Edge Function-en för tolkning men lagras inte av appen.
+Autentisering sker med e-post och lösenord mot PocketBase på M5.
+Native-sessionen lagras i iOS Keychain/Android Keystore via
+`expo-secure-store`. Collection rules begränsar läsning till det autentiserade
+hushållet och alla skrivningar går genom validerade serverroutes. Foto och ljud
+skickas till en autentiserad route och vidare till M5:s Whisper/llama-swap men
+lagras inte av appen eller backend.
 
 ## Kontroller
 

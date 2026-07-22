@@ -10,6 +10,30 @@ permissions:
   contents: read
 
 jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Download pinned PocketBase release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(tr -d '[:space:]' < backend/VERSION)"
+          release="https://github.com/pocketbase/pocketbase/releases/download/v${version}"
+          curl -fsSLO "${release}/pocketbase_${version}_linux_amd64.zip"
+          curl -fsSLo checksums.txt "${release}/checksums.txt"
+          grep " pocketbase_${version}_linux_amd64.zip$" checksums.txt | sha256sum --check
+          unzip -q "pocketbase_${version}_linux_amd64.zip" pocketbase
+          chmod 0755 pocketbase
+
+      - name: Test migrations and authorization routes
+        env:
+          POCKETBASE_BIN: ${{ github.workspace }}/pocketbase
+        run: ./scripts/test-backend.sh
+
   app:
     runs-on: ubuntu-latest
     defaults:

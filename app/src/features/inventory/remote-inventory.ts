@@ -12,22 +12,22 @@ export type ItemRow = {
   category: string;
   quantity: number;
   unit: string;
-  location_id: string;
-  frozen_on: string | null;
-  eat_before: string | null;
-  date_source: FreezerItem['dateSource'];
-  note: string | null;
+  location: string;
+  frozenOn: string;
+  eatBefore: string;
+  dateSource: FreezerItem['dateSource'];
+  note: string;
   status: FreezerItem['status'];
-  created_at: string;
-  updated_at: string;
+  created: string;
+  updated: string;
   version: number;
 };
 
 export type EventRow = {
   id: string;
-  item_id: string;
-  event_type: InventoryEvent['type'];
-  occurred_at: string;
+  item: string;
+  eventType: InventoryEvent['type'];
+  created: string;
 };
 
 export function itemVisual(category: string) {
@@ -54,14 +54,14 @@ export function itemFromRow(row: ItemRow): FreezerItem {
     category: row.category,
     quantity: Number(row.quantity),
     unit: row.unit,
-    locationId: row.location_id,
-    frozenOn: row.frozen_on ?? undefined,
-    eatBefore: row.eat_before ?? undefined,
-    dateSource: row.date_source,
-    note: row.note ?? undefined,
+    locationId: row.location,
+    frozenOn: row.frozenOn || undefined,
+    eatBefore: row.eatBefore || undefined,
+    dateSource: row.dateSource,
+    note: row.note || undefined,
     status: row.status,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: row.created,
+    updatedAt: row.updated,
     version: row.version,
     ...itemVisual(row.category),
   };
@@ -70,8 +70,8 @@ export function itemFromRow(row: ItemRow): FreezerItem {
 export function eventFromRow(row: EventRow): InventoryEvent {
   return {
     id: row.id,
-    itemId: row.item_id,
-    type: row.event_type,
-    occurredAt: row.occurred_at,
+    itemId: row.item,
+    type: row.eventType,
+    occurredAt: row.created,
   };
 }

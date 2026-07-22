@@ -1,63 +1,91 @@
-import type { Session, User } from '@supabase/supabase-js';
+import type { RecordModel } from 'pocketbase';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
-import { supabase } from '@/lib/supabase';
+import { pocketbase, pocketbaseAuthReady } from '@/lib/pocketbase';
+
+export type AppUser = RecordModel & {
+  email: string;
+  displayName: string;
+  household: string;
+  householdRole: 'owner' | 'member' | '';
+};
 
 type AuthContextValue = {
-  session: Session | null;
-  user: User | null;
+  authenticated: boolean;
+  user: AppUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(Boolean(supabase));
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [loading, setLoading] = useState(Boolean(pocketbase));
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!pocketbase) return;
+    const client = pocketbase;
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setLoading(false);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setLoading(false);
-    });
+    let unsubscribe = () => {};
+
+    pocketbaseAuthReady
+      .then(async () => {
+        if (client.authStore.isValid) {
+          try {
+            await client.collection('users').authRefresh();
+          } catch {
+            client.authStore.clear();
+          }
+        }
+        if (!mounted) return;
+        unsubscribe = client.authStore.onChange((_token, record) => {
+          if (mounted) setUser((record as AppUser | null) ?? null);
+        }, true);
+        setLoading(false);
+      })
+      .catch(() => {
+        client.authStore.clear();
+        if (mounted) setLoading(false);
+      });
+
     return () => {
       mounted = false;
-      data.subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      session,
-      user: session?.user ?? null,
+      authenticated: Boolean(user && pocketbase?.authStore.isValid),
+      user,
       loading,
       signIn: async (email, password) => {
-        if (!supabase) throw new Error('Supabase är inte konfigurerat.');
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
+        await pocketbase.collection('users').authWithPassword(email, password);
       },
       signUp: async (email, password) => {
-        if (!supabase) throw new Error('Supabase är inte konfigurerat.');
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
+        if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
+        const auth = await pocketbase.send<{ token: string; record: RecordModel }>('/api/iceage/signup', {
+          method: 'POST',
+          body: { email, password },
+        });
+        pocketbase.authStore.save(auth.token, auth.record);
       },
       signOut: async () => {
-        if (!supabase) return;
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
+        if (!pocketbase) return;
+        await pocketbase.realtime.unsubscribe();
+        pocketbase.authStore.clear();
+      },
+      refreshUser: async () => {
+        if (!pocketbase?.authStore.isValid) return;
+        await pocketbase.collection('users').authRefresh();
       },
     }),
-    [loading, session],
+    [loading, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -48,7 +48,7 @@ export default function HomeScreen() {
                 <View style={[styles.syncDot, { backgroundColor: theme.successText }]} />
                 <ThemedText type="caption" themeColor="textTertiary">
                   {syncStatus === 'local'
-                    ? 'Demoläge · anslut Supabase för delning'
+                    ? 'Demoläge · anslut M5 för delning'
                     : syncStatus === 'saving'
                       ? 'Synkar ändringen …'
                       : syncStatus === 'error'
