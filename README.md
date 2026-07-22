@@ -12,12 +12,13 @@ mellan hemmets medlemmar och tydligt markerade "ät snart"-rekommendationer.
 - [Produktkrav](./PRD-fryslagerappen.md)
 - [Roadmap och epics](./docs/ROADMAP.md)
 - [Utvecklingsmiljö](./docs/DEVELOPMENT.md)
+- [Körbar tvåminutersdemo](./docs/DEMO.md)
 
 ## Teknik
 
 - Expo SDK 57 / React Native 0.86 / React 19
 - TypeScript och Expo Router för iPhone och en framtida webbvy
-- Expo SQLite för lokal/offline data
+- Expo SQLite installerat inför den planerade offline-kärnan
 - Självhostad PocketBase på M5 för autentisering, behörighet, lagring och realtid
 - Lokal Whisper och multimodal modell på M5, med Orin Nano som valfri worker
 - Jest, React Native Testing Library och ESLint

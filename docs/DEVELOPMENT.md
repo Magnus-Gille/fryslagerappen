@@ -13,7 +13,7 @@ Node.js 24.18.0 LTS används. Node 26 är installerad på utvecklingsmaskinen me
 
 - `expo-camera` och `expo-image-picker`: foto och etikettinläsning
 - `expo-audio`: lokal röstinspelning
-- `expo-sqlite`: offline-first lager och synkkö
+- `expo-sqlite`: installerat inför den planerade offline-kärnan och synkkön
 - `expo-secure-store`: säkra sessionsuppgifter
 - `expo-notifications`: valbara "ät snart"-påminnelser
 - `expo-network`: nätverksmedveten synk
@@ -76,6 +76,17 @@ printf '%s\n' 'EXPO_PUBLIC_ICEAGE_API_URL=https://m5.example-tailnet.ts.net' > a
 
 Om URL:en saknas kör appen det befintliga lokala demoläget; foto, röst,
 inloggning och delning är då avsiktligt avstängda.
+
+Tills Tailscale Serve har fått sin engångsapproval går det att köra den riktiga
+backendvägen i iOS Simulator genom den avgränsade SSH-tunneln:
+
+```bash
+./scripts/start-m5-tunnel.sh
+printf '%s\n' 'EXPO_PUBLIC_ICEAGE_API_URL=http://127.0.0.1:18090' > app/.env.local
+```
+
+Låt tunneln ligga kvar i sin terminal medan appen kör. Skriptet öppnar inte
+PocketBase-administrationen. Se [demoanvisningen](./DEMO.md) för hela flödet.
 
 GitHub Pages exporteras alltid utan backend-URL. Att lägga tailnet-adressen i
 en publik webb-bundle skulle röja privat infrastruktur även om Tailscale

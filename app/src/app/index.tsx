@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 're
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { AddItemModal } from '@/features/inventory/add-item-modal';
+import { AddItemModal, type CaptureMode } from '@/features/inventory/add-item-modal';
 import { InventoryCard } from '@/features/inventory/inventory-card';
 import { HomeMenu } from '@/features/home/home-menu';
 import { selectActiveItems } from '@/features/inventory/inventory-state';
@@ -19,7 +19,7 @@ export default function HomeScreen() {
   const { state, eatSoonItems, syncStatus, takeOne, moveItem, consumeItem } = useInventory();
   const [query, setQuery] = useState('');
   const [locationId, setLocationId] = useState<string | undefined>();
-  const [showAdd, setShowAdd] = useState(false);
+  const [addEntry, setAddEntry] = useState<CaptureMode | 'chooser'>();
   const [showHome, setShowHome] = useState(false);
   const [movingItemId, setMovingItemId] = useState<string>();
   const activeLocationId = state.locations.some((location) => location.id === locationId)
@@ -184,25 +184,57 @@ export default function HomeScreen() {
           styles.addButtonLayer,
           { bottom: Math.max(insets.bottom, Spacing.three) + BottomTabInset + Spacing.two },
         ]}>
-        <View pointerEvents="box-none" style={styles.addButtonAnchor}>
+        <View pointerEvents="box-none" style={styles.quickActions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Lägg till vara"
-            onPress={() => setShowAdd(true)}
+            accessibilityLabel="Lägg till med foto"
+            onPress={() => setAddEntry('photo')}
             style={({ pressed }) => [
-              styles.addButton,
+              styles.quickAction,
               { backgroundColor: theme.primary },
               pressed && styles.pressed,
             ]}>
-            <ThemedText style={styles.addIcon}>＋</ThemedText>
-            <ThemedText type="smallBold" style={styles.addText}>
-              Lägg till
+            <ThemedText style={styles.quickActionIcon}>📷</ThemedText>
+            <ThemedText type="smallBold" style={styles.quickActionPrimaryText}>
+              Foto
             </ThemedText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Lägg till eller ändra med rösten"
+            onPress={() => setAddEntry('voice')}
+            style={({ pressed }) => [
+              styles.quickAction,
+              styles.quickActionSecondary,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+              pressed && styles.pressed,
+            ]}>
+            <ThemedText style={styles.quickActionIcon}>🎙️</ThemedText>
+            <ThemedText type="smallBold" style={{ color: theme.primary }}>
+              Röst
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Fler sätt att lägga till"
+            onPress={() => setAddEntry('chooser')}
+            style={({ pressed }) => [
+              styles.moreButton,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+              pressed && styles.pressed,
+            ]}>
+            <ThemedText style={[styles.moreIcon, { color: theme.primary }]}>＋</ThemedText>
           </Pressable>
         </View>
       </View>
 
-      <AddItemModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      {addEntry && (
+        <AddItemModal
+          visible
+          initialMode={addEntry === 'chooser' ? undefined : addEntry}
+          onClose={() => setAddEntry(undefined)}
+        />
+      )}
       <MoveItemModal
         visible={Boolean(movingItemId)}
         item={state.items.find((item) => item.id === movingItemId)}
@@ -321,16 +353,19 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
-  addButtonAnchor: {
+  quickActions: {
     width: '100%',
     maxWidth: MaxContentWidth,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
     alignItems: 'flex-end',
     paddingHorizontal: Spacing.three,
   },
-  addButton: {
+  quickAction: {
     minHeight: 54,
     borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.three,
     flexDirection: 'row',
     gap: Spacing.two,
     alignItems: 'center',
@@ -341,7 +376,22 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 6,
   },
-  addIcon: { color: '#FFFFFF', fontSize: 24, lineHeight: 28 },
-  addText: { color: '#FFFFFF' },
+  quickActionSecondary: { borderWidth: 1 },
+  quickActionIcon: { fontSize: 20, lineHeight: 24 },
+  quickActionPrimaryText: { color: '#FFFFFF' },
+  moreButton: {
+    width: 54,
+    height: 54,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10253D',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  moreIcon: { fontSize: 26, lineHeight: 30 },
   pressed: { opacity: 0.82, transform: [{ scale: 0.98 }] },
 });
