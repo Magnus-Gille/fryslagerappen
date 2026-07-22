@@ -68,7 +68,6 @@
       "expo-web-browser"
     ],
     "experiments": {
-      "baseUrl": "/fryslagerappen",
       "typedRoutes": true,
       "reactCompiler": true
     }

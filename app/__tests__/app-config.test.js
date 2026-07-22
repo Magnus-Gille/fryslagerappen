@@ -1,4 +1,5 @@
 const config = require('../app.json');
+const resolveConfig = require('../app.config');
 
 describe('Expo app configuration', () => {
   it('uses the expected product identity', () => {
@@ -36,8 +37,18 @@ describe('Expo app configuration', () => {
     expect(splashPlugin[1].image).toBe('./assets/images/fryslagerappen-icon.png');
   });
 
-  it('exports web routes beneath the public GitHub Pages repository path', () => {
+  it('keeps the GitHub Pages base path out of native bundles', () => {
     expect(config.expo.web.output).toBe('static');
-    expect(config.expo.experiments.baseUrl).toBe('/fryslagerappen');
+    expect(resolveConfig({ config: config.expo }).experiments.baseUrl).toBeUndefined();
+  });
+
+  it('adds the public repository path when explicitly building the website', () => {
+    process.env.EXPO_WEB_BASE_URL = '/fryslagerappen';
+
+    try {
+      expect(resolveConfig({ config: config.expo }).experiments.baseUrl).toBe('/fryslagerappen');
+    } finally {
+      delete process.env.EXPO_WEB_BASE_URL;
+    }
   });
 });
