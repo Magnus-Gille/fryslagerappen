@@ -25,8 +25,8 @@ En epic är klar när:
 
 ## Testdeltagare och etik
 
-De första testerna görs med hushållsmedlem A och hushållsmedlem B eftersom de är de uttalade
-behovsägarna. Från Epic 7 bör 3–5 ytterligare hushåll rekryteras för att undvika
+De första testerna görs med de två anonymiserade behovsägarna. Från Epic 7 bör
+3–5 ytterligare hushåll rekryteras för att undvika
 att produkten bara passar en familjs vanor.
 
 Varje session ska ha:
@@ -53,7 +53,7 @@ läggs in i och tas ur de två frysarna.
 
 **Användningstest 1 — Kontextuell observation**
 
-- Deltagare: hushållsmedlem A och hushållsmedlem B, var för sig.
+- Deltagare: de två behovsägarna, var för sig.
 - Plats: kök, frysen uppe och frysboxen nere.
 - Uppgift: lägg in tre verkliga varor och hitta tre efterfrågade varor med
   nuvarande metod.
@@ -101,7 +101,7 @@ innan backend byggs.
 
 **Användningstest 2 — Modererat prototyptest**
 
-- Deltagare: hushållsmedlem A och hushållsmedlem B, separat ordning.
+- Deltagare: de två behovsägarna, separat ordning.
 - Uppgifter: registrera bär, kontrollera glass i butiksroll, flytta en gryta och
   markera en burk som förbrukad.
 - Mät: task success, tid, antal tryck, fel, förståelse för datumkällor och SUS-lite.
@@ -147,7 +147,7 @@ innan backend byggs.
 
 **Användningstest 3 — Registrering vid frysen**
 
-- Deltagare: hushållsmedlem A och hushållsmedlem B.
+- Deltagare: de två behovsägarna.
 - Material: minst 10 representativa verkliga varor.
 - Miljö: stående vid respektive frys, med normala störningar och händer upptagna.
 - Mät: median/P90-tid, korrekt strukturerade fält, rättningar, övergivna flöden
@@ -174,7 +174,7 @@ innan backend byggs.
 
 **Användningstest 4 — Tvåpersoners samtidighet**
 
-- Deltagare: hushållsmedlem A och hushållsmedlem B med varsin iPhone.
+- Deltagare: de två behovsägarna med varsin iPhone.
 - Uppgifter: lägg till samtidigt, ändra samma post, arbeta offline på en telefon,
   återanslut och verifiera slutresultatet.
 - Mät: förlorade ändringar, förståelse för synkstatus och tid tills den andra
@@ -195,7 +195,7 @@ innan backend byggs.
 
 **Användningstest 5 — Butikssimulering**
 
-- Deltagare: hushållsmedlem A, hushållsmedlem B och 2 nya hushållsanvändare.
+- Deltagare: de två behovsägarna och 2 nya hushållsanvändare.
 - Uppgift: fatta sex köpbeslut från en simulerad inköpslista under tidspress.
 - Mät: rätt beslut, tid till svar, nollresultat och behov av att öppna detaljvy.
 - Målvärde: median under 5 sekunder till användbart svar.
@@ -215,7 +215,7 @@ livsmedelssäkerhetsgarantier.
 
 **Användningstest 6 — Tvåveckors dagboksstudie**
 
-- Deltagare: hushållsmedlem A/hushållsmedlem B och 3–5 pilot-hushåll.
+- Deltagare: de två behovsägarna och 3–5 pilot-hushåll.
 - Upplägg: använd appen i vardagen i 14 dagar, med kort daglig fråga och
   intervju dag 1, 7 och 14.
 - Mät: lagerprecision, registreringsgrad, användning av "Ät snart", förbrukat

@@ -5,6 +5,7 @@ Produktbeskrivning fryslagerappen.m4a
 Produktbeskrivning fryslagerappen.txt
 
 # Local environment and tool artifacts
+.DS_Store
 .env
 .env.*
 !.env.example

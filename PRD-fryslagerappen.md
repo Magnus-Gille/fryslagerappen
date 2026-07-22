@@ -4,8 +4,8 @@
 - **Datum:** 2026-07-22
 - **Produktnamn:** Arbetsnamn *Fryslagerappen*
 - **Primär plattform:** iPhone
-- **Källdokument:** `Produktbeskrivning fryslagerappen.txt`
-**Intervjudeltagare:** hushållsmedlem B (primär behovsägare) och hushållsmedlem A (intervjuare/medanvändare)
+- **Källa:** privat användarintervju (råmaterialet versionshanteras inte)
+- **Intervjudeltagare:** två anonymiserade vuxna hushållsmedlemmar
 
 ## 1. Sammanfattning
 
@@ -416,16 +416,16 @@ Måttet speglar produktens mål, men kräver att användarna faktiskt markerar f
 
 MVP:n är produktmässigt godkänd när följande scenario fungerar från början till slut:
 
-1. hushållsmedlem A skapar hushållet och platserna ”Frysen uppe” och ”Frysboxen nere”.
-2. hushållsmedlem B ansluter från sin iPhone och ser samma tomma lager.
-3. hushållsmedlem B fotograferar en handskriven etikett, säger ”Två burkar blåbärssylt i frysboxen nere, gjord i juli” och får ett rimligt strukturerat förslag.
-4. hushållsmedlem B kan tydligt se och rätta osäkra datum innan hon sparar.
-5. Posten visas på hushållsmedlem A telefon inom fem sekunder när båda är online.
-6. hushållsmedlem A söker efter ”blåbär” och ser mängd, plats, foto och datumstatus.
-7. hushållsmedlem A minskar mängden från två till en utan att behöva redigera hela posten.
+1. Hushållsmedlem A skapar hushållet och platserna ”Frysen uppe” och ”Frysboxen nere”.
+2. Hushållsmedlem B ansluter från sin iPhone och ser samma tomma lager.
+3. Hushållsmedlem B fotograferar en handskriven etikett, säger ”Två burkar blåbärssylt i frysboxen nere, gjord i juli” och får ett rimligt strukturerat förslag.
+4. Hushållsmedlem B kan tydligt se och rätta osäkra datum innan posten sparas.
+5. Posten visas på hushållsmedlem A:s telefon inom fem sekunder när båda är online.
+6. Hushållsmedlem A söker efter ”blåbär” och ser mängd, plats, foto och datumstatus.
+7. Hushållsmedlem A minskar mängden från två till en utan att behöva redigera hela posten.
 8. Ändringen syns hos hushållsmedlem B.
 9. En vara med nära datum visas under ”Ät snart”, med tydlig markering om datumet är uppskattat.
-10. hushållsmedlem B markerar varan som förbrukad och kan därefter återställa den från historiken.
+10. Hushållsmedlem B markerar varan som förbrukad och kan därefter återställa den från historiken.
 11. Samma grundflöden fungerar efter en kort offlineperiod utan dataförlust.
 
 ## 14. Risker och motåtgärder
@@ -445,7 +445,7 @@ MVP:n är produktmässigt godkänd när följande scenario fungerar från börja
 
 ### Fas 0: klickbar prototyp
 
-- Testa startsida, lägg till-flöde, sökning och förbrukning med hushållsmedlem A och hushållsmedlem B.
+- Testa startsida, lägg till-flöde, sökning och förbrukning med de två behovsägarna.
 - Mät antal tryck och faktisk tid för tre typer av varor: köpt förpackning, handskriven burk och egenlagad gryta.
 - Bekräfta om foto, röst eller kombination känns naturligast i praktiken.
 

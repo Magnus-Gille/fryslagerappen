@@ -36,6 +36,10 @@ ska hållas utbytbara.
 - Ett Apple-utvecklarkonto först när fysisk distribution krävs
 - En separat Supabase-utvecklingsmiljö från Epic 3
 
+Appidentifierarna i `app/app.json` använder den publika platshållaren
+`com.example.fryslagerappen`. Byt båda identifierarna till ett unikt värde som
+teamet kontrollerar innan ett signerat iOS- eller Android-bygge distribueras.
+
 Node 24 är installerad via Homebrew som keg-only. Om `node --version` visar en
 annan version kan rätt verktyg användas för den aktuella terminalen med:
 

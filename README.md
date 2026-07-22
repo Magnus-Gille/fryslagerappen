@@ -39,6 +39,11 @@ Appen använder inga produktionshemligheter i repot. Kopiera
 `app/.env.example` till `app/.env.local` när en separat utvecklingsmiljö i
 Supabase har skapats.
 
+## Licens
+
+Projektet är öppen källkod under [MIT-licensen](./LICENSE). Tredjepartskod och
+mallresurser behåller sina respektive licenser.
+
 ## Integritet
 
 Det råa röstmemot och transkriptet är avsiktligt ignorerade av Git. PRD:n är

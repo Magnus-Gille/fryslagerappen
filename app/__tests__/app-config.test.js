@@ -5,6 +5,7 @@ describe('Expo app configuration', () => {
     expect(config.expo.name).toBe('Fryslagerappen');
     expect(config.expo.slug).toBe('fryslagerappen');
     expect(config.expo.ios.bundleIdentifier).toBe('com.example.fryslagerappen');
+    expect(config.expo.android.package).toBe('com.example.fryslagerappen');
   });
 
   it('configures the native capabilities needed by the MVP', () => {
