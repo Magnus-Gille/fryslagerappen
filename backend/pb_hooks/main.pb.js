@@ -1,3 +1,25 @@
+onBootstrap((e) => {
+  e.next();
+
+  const clientId = $os.getenv("ICEAGE_APPLE_CLIENT_ID").trim();
+  const clientSecret = $os.getenv("ICEAGE_APPLE_CLIENT_SECRET").trim();
+  if (!clientId && !clientSecret) return;
+  if (!clientId || !clientSecret) {
+    throw new Error("ICEAGE_APPLE_CLIENT_ID and ICEAGE_APPLE_CLIENT_SECRET must be configured together");
+  }
+
+  const users = e.app.findCollectionByNameOrId("users");
+  users.oauth2.enabled = true;
+  users.oauth2.providers = [{
+    name: "apple",
+    clientId: clientId,
+    clientSecret: clientSecret,
+    pkce: false,
+  }];
+  users.oauth2.mappedFields.name = "displayName";
+  e.app.save(users);
+});
+
 routerAdd("GET", "/api/iceage/health", (e) => {
   return e.json(200, { status: "ok", service: "iceage", inference: "local" });
 });

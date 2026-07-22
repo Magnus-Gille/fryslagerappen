@@ -13,6 +13,11 @@ the private tailnet infrastructure.
   renaming, owner-only one-time invitations and member removal, realtime
   inventory, optimistic conflict detection, history, and explicit confirmation
   before capture-derived changes.
+- The iPhone client includes the native Apple-provided **Sign in with Apple**
+  button and exchanges its one-time authorization code through PocketBase on
+  the M5. Activation still requires the correct Apple Developer App ID/key and
+  a renewable client-secret JWT in the M5 environment; no Apple secret is kept
+  in the repository or app bundle.
 - A Home has one or more members and owner-configured storage places. Owners can
   add, edit, type, and archive any number of freezers, fridges, and dry-storage
   places; occupied places and the final active place cannot be archived.
@@ -49,7 +54,7 @@ the private tailnet infrastructure.
   issue invitations.
 - All synthetic accounts, households, items, events, invitations, and quotas
   were removed after the remote tests.
-- Expo Doctor 20/20, ESLint, TypeScript, 8 Jest suites / 30 tests, static web
+- Expo Doctor 20/20, ESLint, TypeScript, 9 Jest suites / 35 tests, static web
   export, a native iOS simulator build, migration validation, Bash syntax, Git
   whitespace checks, and secret scanning pass. The simulator login screen was
   visually inspected after launch; its disabled action state was corrected.
@@ -68,12 +73,20 @@ the private tailnet infrastructure.
   endpoint was installed on Magnus's paired iPhone 17 Pro. CoreDevice verified
   version 1.0.0 and bundle ID `ai.gille.fryslagerappen`; foreground launch was
   deferred only because the phone was locked.
+- The Apple login UI was visually verified in a self-contained Release build on
+  the iPhone 16e simulator. The generated native project contains the Sign in
+  with Apple capability and the Expo Apple authentication module compiles.
 - `npm audit --omit=dev` reports 11 moderate Expo-toolchain advisories and no
   high or critical findings. The proposed forced fix is an incompatible Expo
   downgrade and remains deferred.
 
 ## Remaining handoffs
 
+- Apple login cannot be exercised end-to-end or installed on the paired phone
+  until the `ai.gille.fryslagerappen` App ID is enabled for Sign in with Apple
+  and the matching team/key/client secret is configured on M5. Two existing
+  `.p8` files were found locally but were not used because their owning team and
+  authorized capability have not been verified.
 - The planned SQLite persistence and sync queue are not implemented yet. The
   authenticated prototype currently depends on PocketBase being reachable;
   local demo data resets when the app process restarts.
@@ -82,6 +95,8 @@ the private tailnet infrastructure.
 
 ## Next step
 
-Unlock the paired iPhone, open Fryslagerappen, and run the documented two-minute
-demo against the private M5 backend. Then run the two-person contextual tests
-with Magnus and Sara.
+Confirm the Apple Developer team/key for `ai.gille.fryslagerappen`, enable the
+capability, generate the client secret directly into the M5 environment, then
+deploy and exercise Apple login on the paired iPhone. After that, run the
+documented two-minute demo and the two-person contextual tests with Magnus and
+Sara.

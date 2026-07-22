@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -10,7 +11,7 @@ import { useAuth } from './auth-provider';
 
 export function AuthScreen() {
   const theme = useTheme();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signInWithApple, signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -30,6 +31,19 @@ export function AuthScreen() {
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Inloggningen misslyckades.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitApple() {
+    if (busy) return;
+    setBusy(true);
+    setMessage(undefined);
+    try {
+      await signInWithApple();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Apple-inloggningen misslyckades.');
     } finally {
       setBusy(false);
     }
@@ -74,6 +88,25 @@ export function AuthScreen() {
             style={[styles.primary, { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement }]}>
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <ThemedText type="smallBold" style={styles.white}>{mode === 'signin' ? 'Logga in' : 'Skapa konto'}</ThemedText>}
           </Pressable>
+          {Platform.OS === 'ios' && (
+            <>
+              <View style={styles.dividerRow}>
+                <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                <ThemedText type="small" themeColor="textSecondary">eller</ThemedText>
+                <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              </View>
+              <View pointerEvents={busy ? 'none' : 'auto'} style={busy ? styles.disabled : undefined}>
+                <AppleAuthentication.AppleAuthenticationButton
+                  accessibilityLabel="Logga in med Apple"
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  cornerRadius={Radius.medium}
+                  onPress={submitApple}
+                  style={styles.appleButton}
+                />
+              </View>
+            </>
+          )}
           <Pressable accessibilityRole="button" onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
             <ThemedText type="smallBold" style={[styles.switchText, { color: theme.primary }]}>
               {mode === 'signin' ? 'Ny här? Skapa konto' : 'Har du redan ett konto? Logga in'}
@@ -92,6 +125,10 @@ const styles = StyleSheet.create({
   heading: { gap: Spacing.two, marginBottom: Spacing.two },
   input: { minHeight: 54, borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, fontSize: 16 },
   primary: { minHeight: 54, borderRadius: Radius.medium, alignItems: 'center', justifyContent: 'center' },
+  appleButton: { width: '100%', height: 54 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  divider: { flex: 1, height: StyleSheet.hairlineWidth },
+  disabled: { opacity: 0.55 },
   white: { color: '#FFFFFF' },
   switchText: { textAlign: 'center', padding: Spacing.two },
 });
