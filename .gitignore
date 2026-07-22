@@ -1,0 +1,13 @@
+.DS_Store
+
+# Raw discovery material stays local. The PRD is the shareable source of truth.
+Produktbeskrivning fryslagerappen.m4a
+Produktbeskrivning fryslagerappen.txt
+
+# Local environment and tool artifacts
+.env
+.env.*
+!.env.example
+*.log
+.idea/
+.vscode/
