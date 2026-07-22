@@ -38,6 +38,12 @@ function itemVisual(category: string) {
   if (category.includes('Glass')) {
     return { color: '#F1D791', emoji: '🍨' };
   }
+  if (category === 'Torrvaror') {
+    return { color: '#D8B980', emoji: '🍝' };
+  }
+  if (category === 'Konserver') {
+    return { color: '#C7A27A', emoji: '🥫' };
+  }
   return { color: '#8DB8A4', emoji: '🥘' };
 }
 

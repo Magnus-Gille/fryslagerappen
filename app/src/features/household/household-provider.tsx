@@ -1,7 +1,7 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '@/features/auth/auth-provider';
-import { supabase } from '@/lib/supabase';
+import { pocketbase } from '@/lib/pocketbase';
 
 export type Household = { id: string; name: string; role: 'owner' | 'member'; displayName: string };
 
@@ -17,35 +17,28 @@ type HouseholdContextValue = {
 const HouseholdContext = createContext<HouseholdContextValue | null>(null);
 
 export function HouseholdProvider({ children }: PropsWithChildren) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(Boolean(user));
   const latestRefresh = useRef(0);
 
   const refresh = useCallback(async () => {
     const refreshNumber = ++latestRefresh.current;
-    if (!supabase || !user) {
+    if (!pocketbase || !user?.household) {
       setHousehold(null);
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('household_members')
-        .select('role, display_name, households!inner(id, name)')
-        .eq('user_id', user.id)
-        .order('joined_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
+      const record = await pocketbase.collection('households').getOne(user.household);
       if (refreshNumber !== latestRefresh.current) return;
-      const joined = data?.households as unknown as { id: string; name: string } | undefined;
-      setHousehold(
-        joined
-          ? { id: joined.id, name: joined.name, role: data!.role, displayName: data!.display_name }
-          : null,
-      );
+      setHousehold({
+        id: record.id,
+        name: String(record.name),
+        role: user.householdRole === 'owner' ? 'owner' : 'member',
+        displayName: user.displayName,
+      });
     } finally {
       if (refreshNumber === latestRefresh.current) setLoading(false);
     }
@@ -63,33 +56,31 @@ export function HouseholdProvider({ children }: PropsWithChildren) {
       loading,
       refresh,
       createHousehold: async (householdName, displayName) => {
-        if (!supabase) throw new Error('Supabase är inte konfigurerat.');
-        const { error } = await supabase.rpc('bootstrap_household', {
-          household_name: householdName,
-          member_name: displayName,
+        if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
+        await pocketbase.send('/api/iceage/households', {
+          method: 'POST',
+          body: { name: householdName, displayName },
         });
-        if (error) throw error;
-        await refresh();
+        await refreshUser();
       },
       joinHousehold: async (inviteToken, displayName) => {
-        if (!supabase) throw new Error('Supabase är inte konfigurerat.');
-        const { error } = await supabase.rpc('accept_household_invite', {
-          invite_token: inviteToken.trim(),
-          member_name: displayName,
+        if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
+        await pocketbase.send('/api/iceage/invites/accept', {
+          method: 'POST',
+          body: { token: inviteToken.trim(), displayName },
         });
-        if (error) throw error;
-        await refresh();
+        await refreshUser();
       },
       createInvite: async () => {
-        if (!supabase || !household) throw new Error('Inget hushåll är valt.');
-        const { data, error } = await supabase.rpc('create_household_invite', {
-          target_household_id: household.id,
-        });
-        if (error) throw error;
-        return String(data);
+        if (!pocketbase || !household) throw new Error('Inget hushåll är valt.');
+        const result = await pocketbase.send<{ token: string }>(
+          `/api/iceage/households/${household.id}/invites`,
+          { method: 'POST', body: {} },
+        );
+        return result.token;
       },
     }),
-    [household, loading, refresh],
+    [household, loading, refresh, refreshUser],
   );
 
   return <HouseholdContext.Provider value={value}>{children}</HouseholdContext.Provider>;

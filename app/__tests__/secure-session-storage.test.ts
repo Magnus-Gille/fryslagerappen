@@ -15,7 +15,7 @@ jest.mock('expo-secure-store', () => ({
   }),
 }));
 
-import { secureSessionStorage } from '@/lib/supabase';
+import { secureSessionStorage } from '@/lib/secure-session-storage';
 
 describe('secure session storage', () => {
   beforeEach(() => mockStoredValues.clear());

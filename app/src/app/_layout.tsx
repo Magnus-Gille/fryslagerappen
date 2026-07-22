@@ -24,19 +24,19 @@ export default function TabLayout() {
 }
 
 function AppGate() {
-  const { session, loading: authLoading } = useAuth();
+  const { authenticated, loading: authLoading } = useAuth();
   const { household, loading: householdLoading } = useHousehold();
 
-  if (runtimeConfig.hasSupabase && authLoading) {
+  if (runtimeConfig.hasBackend && authLoading) {
     return <LoadingScreen />;
   }
-  if (runtimeConfig.hasSupabase && !session) {
+  if (runtimeConfig.hasBackend && !authenticated) {
     return <AuthScreen />;
   }
-  if (runtimeConfig.hasSupabase && householdLoading) {
+  if (runtimeConfig.hasBackend && householdLoading) {
     return <LoadingScreen />;
   }
-  if (runtimeConfig.hasSupabase && !household) {
+  if (runtimeConfig.hasBackend && !household) {
     return <HouseholdScreen />;
   }
   return (

@@ -3,17 +3,43 @@ import type { FreezerItem, FreezerLocation } from './types';
 export const seedLocations: FreezerLocation[] = [
   {
     id: 'upstairs',
-    name: 'Frysen uppe',
-    description: 'Köket · 3 lådor',
+    name: 'Frysen på övervåningen',
+    description: 'Övervåningen · 3 lådor',
   },
   {
     id: 'downstairs',
-    name: 'Frysboxen nere',
+    name: 'Frysen i källaren',
     description: 'Källaren · stor box',
+  },
+  {
+    id: 'upstairs-shelf',
+    name: 'Hyllan på övervåningen',
+    description: 'Torrvaror på övervåningen',
+  },
+  {
+    id: 'studio-shelf',
+    name: 'Hyllan i ateljén',
+    description: 'Torrvaror i ateljén',
   },
 ];
 
 export const seedItems: FreezerItem[] = [
+  {
+    id: 'item-pasta',
+    name: 'Pasta',
+    category: 'Torrvaror',
+    quantity: 3,
+    unit: 'paket',
+    locationId: 'studio-shelf',
+    eatBefore: '2027-04-30',
+    dateSource: 'label',
+    status: 'active',
+    createdAt: '2026-07-22T10:00:00.000Z',
+    updatedAt: '2026-07-22T10:00:00.000Z',
+    version: 1,
+    color: '#D8B980',
+    emoji: '🍝',
+  },
   {
     id: 'item-mushroom-sauce',
     name: 'Kantarellsås',

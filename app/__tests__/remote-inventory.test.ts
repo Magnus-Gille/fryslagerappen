@@ -11,14 +11,14 @@ describe('remote inventory mapping', () => {
         category: 'Fisk',
         quantity: 4,
         unit: 'bitar',
-        location_id: 'location-1',
-        frozen_on: '2026-02-02',
-        eat_before: '2026-07-28',
-        date_source: 'label',
-        note: null,
+        location: 'location-1',
+        frozenOn: '2026-02-02',
+        eatBefore: '2026-07-28',
+        dateSource: 'label',
+        note: '',
         status: 'active',
-        created_at: '2026-02-02T17:45:00.000Z',
-        updated_at: '2026-07-20T14:08:00.000Z',
+        created: '2026-02-02T17:45:00.000Z',
+        updated: '2026-07-20T14:08:00.000Z',
         version: 3,
       }),
     ).toMatchObject({
@@ -31,7 +31,7 @@ describe('remote inventory mapping', () => {
 
   it('maps a location row', () => {
     expect(
-      locationFromRow({ id: 'location-1', name: 'Frysen uppe', description: 'Köket' }),
-    ).toEqual({ id: 'location-1', name: 'Frysen uppe', description: 'Köket' });
+      locationFromRow({ id: 'location-1', name: 'Hyllan i ateljén', description: 'Torrvaror' }),
+    ).toEqual({ id: 'location-1', name: 'Hyllan i ateljén', description: 'Torrvaror' });
   });
 });

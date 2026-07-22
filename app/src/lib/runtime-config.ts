@@ -1,10 +1,6 @@
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
-const supabasePublishableKey = (
-  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
-)?.trim();
+const backendUrl = process.env.EXPO_PUBLIC_ICEAGE_API_URL?.trim().replace(/\/$/, '');
 
 export const runtimeConfig = {
-  supabaseUrl,
-  supabasePublishableKey,
-  hasSupabase: Boolean(supabaseUrl && supabasePublishableKey),
+  backendUrl,
+  hasBackend: Boolean(backendUrl),
 } as const;

@@ -16,16 +16,17 @@ export function AuthScreen() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>();
+  const canSubmit = Boolean(email.trim()) && password.length >= 12 && !busy;
 
   async function submit() {
-    if (!email.trim() || password.length < 8 || busy) return;
+    if (!canSubmit) return;
     setBusy(true);
     setMessage(undefined);
     try {
       if (mode === 'signin') await signIn(email.trim(), password);
       else {
         await signUp(email.trim(), password);
-        setMessage('Kontot är skapat. Bekräfta mejlet om projektet kräver e-postbekräftelse.');
+        setMessage('Kontot är skapat. Skapa ett hushåll eller anslut med en inbjudningskod.');
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Inloggningen misslyckades.');
@@ -41,7 +42,7 @@ export function AuthScreen() {
           <View style={styles.heading}>
             <ThemedText type="smallBold" style={{ color: theme.primary }}>FRYSLAGERAPPEN</ThemedText>
             <ThemedText type="title">Ett lager för hela hushållet</ThemedText>
-            <ThemedText themeColor="textSecondary">Logga in för att synka frysen säkert mellan era telefoner.</ThemedText>
+            <ThemedText themeColor="textSecondary">Logga in för att synka hushållets lager säkert mellan era telefoner.</ThemedText>
           </View>
           <TextInput
             accessibilityLabel="E-postadress"
@@ -58,7 +59,7 @@ export function AuthScreen() {
             accessibilityLabel="Lösenord"
             autoCapitalize="none"
             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-            placeholder="Lösenord, minst 8 tecken"
+            placeholder="Lösenord, minst 12 tecken"
             placeholderTextColor={theme.textTertiary}
             secureTextEntry
             value={password}
@@ -68,9 +69,9 @@ export function AuthScreen() {
           {message && <ThemedText type="small" style={{ color: theme.warningText }}>{message}</ThemedText>}
           <Pressable
             accessibilityRole="button"
-            disabled={busy || !email.trim() || password.length < 8}
+            disabled={!canSubmit}
             onPress={submit}
-            style={[styles.primary, { backgroundColor: theme.primary }]}>
+            style={[styles.primary, { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement }]}>
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <ThemedText type="smallBold" style={styles.white}>{mode === 'signin' ? 'Logga in' : 'Skapa konto'}</ThemedText>}
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>

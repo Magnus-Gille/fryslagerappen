@@ -74,7 +74,7 @@ export function VoiceRecorder({ onRecorded }: { onRecorded: (uri: string) => voi
   return (
     <View style={styles.wrap}>
       <ThemedText type="sectionTitle">{recorderState.isRecording ? `Lyssnar … ${seconds} s` : 'Säg vad som ändras'}</ThemedText>
-      <ThemedText themeColor="textSecondary" style={styles.copy}>Till exempel: “Två burkar äppelmos i frysboxen nere” eller “Jag tar ut en laxfilé”.</ThemedText>
+      <ThemedText themeColor="textSecondary" style={styles.copy}>Till exempel: “Två paket pasta på hyllan i ateljén” eller “Jag tar ut en laxfilé”.</ThemedText>
       <Pressable accessibilityRole="button" accessibilityLabel={recorderState.isRecording ? 'Stoppa inspelning' : 'Starta inspelning'} onPress={toggle} style={[styles.mic, { backgroundColor: recorderState.isRecording ? theme.accent : theme.primary }]}>
         {busy ? <ActivityIndicator color="#FFFFFF" /> : <ThemedText style={styles.micIcon}>{recorderState.isRecording ? '■' : '🎙️'}</ThemedText>}
       </Pressable>

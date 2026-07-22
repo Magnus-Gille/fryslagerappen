@@ -43,7 +43,7 @@ export function matchLocationId(locationName: string | null, locations: FreezerL
 export function toAddItemInput(intent: CaptureIntent, locations: FreezerLocation[]): AddItemInput {
   const locationId = matchLocationId(intent.locationName, locations);
   if (!locationId) {
-    throw new Error('Hushållet saknar en aktiv frysplats.');
+    throw new Error('Hushållet saknar en aktiv förvaringsplats.');
   }
 
   return {

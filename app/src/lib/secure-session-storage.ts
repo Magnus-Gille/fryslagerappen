@@ -1,10 +1,4 @@
-import 'react-native-url-polyfill/auto';
-
-import { createClient, processLock } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
-import { AppState, Platform } from 'react-native';
-
-import { runtimeConfig } from './runtime-config';
 
 const secureStoreOptions = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
 const secureChunkSize = 1000;
@@ -88,22 +82,3 @@ export const secureSessionStorage = {
     ]);
   },
 };
-
-export const supabase = runtimeConfig.hasSupabase
-  ? createClient(runtimeConfig.supabaseUrl!, runtimeConfig.supabasePublishableKey!, {
-      auth: {
-        ...(Platform.OS === 'web' ? {} : { storage: secureSessionStorage }),
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: Platform.OS === 'web',
-        lock: processLock,
-      },
-    })
-  : null;
-
-if (supabase && Platform.OS !== 'web') {
-  AppState.addEventListener('change', (state) => {
-    if (state === 'active') supabase.auth.startAutoRefresh();
-    else supabase.auth.stopAutoRefresh();
-  });
-}

@@ -41,11 +41,11 @@ Varje session ska ha:
 ## Epic 0 — Produktbaslinje och observerad verklighet
 
 **Mål:** bekräfta att intervjuens problemformulering stämmer med hur mat faktiskt
-läggs in i och tas ur de två frysarna.
+läggs in i och tas ur hemmets frysar och torrförråd.
 
 **Omfattning**
 
-- Inventera frysplatser, vanliga förpackningar, etiketter och mängdenheter.
+- Inventera frys- och torrförvaringsplatser, vanliga förpackningar, etiketter och mängdenheter.
 - Definiera 10 representativa testvaror: köpt glass/fisk, bär, sylt, mos,
   färdiglagad gryta och otydligt märkt behållare.
 - Skissa två lågupplösta alternativ: foto först respektive röst först.
@@ -54,7 +54,7 @@ läggs in i och tas ur de två frysarna.
 **Användningstest 1 — Kontextuell observation**
 
 - Deltagare: de två behovsägarna, var för sig.
-- Plats: kök, frysen uppe och frysboxen nere.
+- Plats: kök, frysen på övervåningen, frysen i källaren och torrhyllorna.
 - Uppgift: lägg in tre verkliga varor och hitta tre efterfrågade varor med
   nuvarande metod.
 - Mät: tid, antal förflyttningar, vad som glöms, hur etiketter skrivs och när
@@ -97,7 +97,7 @@ innan backend byggs.
 - Startsida med sökning, "Ät snart" och tydlig Lägg till-knapp.
 - Foto-/röstsimulerad registrering med bekräftelsevy.
 - Snabbåtgärderna Ta ut en, Ändra mängd och Förbrukad.
-- Två platser: Frysen uppe och Frysboxen nere.
+- Fyra platser: två frysar och två torrhyllor på övervåningen, i källaren och i ateljén.
 
 **Användningstest 2 — Modererat prototyptest**
 
@@ -166,7 +166,7 @@ innan backend byggs.
 
 **Omfattning**
 
-- Supabase Auth, Postgres, Storage och Row Level Security.
+- Självhostad PocketBase på M5 med auth, hushållsregler och realtid.
 - Skapa hushåll och säker inbjudan till en medlem.
 - Delta-synk mellan SQLite och backend.
 - Realtime-uppdatering, retry och konflikthantering.
@@ -190,7 +190,7 @@ innan backend byggs.
 - Direkt tillgängligt sökfält och röst-/textsökning.
 - Matchning av namn, kategori, anteckning och försiktiga synonymer.
 - Resultat med mängd, plats, miniatyr och datumstatus.
-- Filter för frysplats, kategori och "ät snart".
+- Filter för förvaringsplats, kategori och "ät snart".
 - Dubblettvarning som förslag, inte blockerande regel.
 
 **Användningstest 5 — Butikssimulering**

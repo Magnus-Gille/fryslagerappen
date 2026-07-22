@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 import { useHousehold } from '@/features/household/household-provider';
-import { supabase } from '@/lib/supabase';
+import { pocketbase } from '@/lib/pocketbase';
 
 import { captureIntentSchema, type CaptureIntent } from './capture-intent';
 
@@ -12,28 +12,39 @@ export async function extractInventoryIntent(input: {
   photo?: CapturePhoto;
   audioUri?: string;
 }): Promise<CaptureIntent> {
-  if (!supabase) throw new Error('Anslut appen till Supabase för riktig foto- och rösttolkning.');
+  if (!pocketbase) throw new Error('Anslut appen till M5-servern för riktig foto- och rösttolkning.');
+  if (!input.audioUri) {
+    const result = await pocketbase.send<{ intent: unknown }>('/api/iceage/extract', {
+      method: 'POST',
+      body: {
+        householdId: input.householdId,
+        photoBase64: input.photo?.base64,
+        photoMimeType: input.photo?.mimeType,
+      },
+    });
+    return captureIntentSchema.parse(result.intent);
+  }
   const body = new FormData();
   body.append('householdId', input.householdId);
   if (input.photo) {
     body.append('photoBase64', input.photo.base64);
     body.append('photoMimeType', input.photo.mimeType);
   }
-  if (input.audioUri) {
-    if (Platform.OS === 'web') {
-      const blob = await fetch(input.audioUri).then((response) => response.blob());
-      body.append('audio', blob, 'inventory.webm');
-    } else {
-      body.append('audio', {
-        uri: input.audioUri,
-        name: 'inventory.m4a',
-        type: 'audio/m4a',
-      } as unknown as Blob);
-    }
+  if (Platform.OS === 'web') {
+    const blob = await fetch(input.audioUri).then((response) => response.blob());
+    body.append('audio', blob, 'inventory.webm');
+  } else {
+    body.append('audio', {
+      uri: input.audioUri,
+      name: 'inventory.m4a',
+      type: 'audio/m4a',
+    } as unknown as Blob);
   }
-  const { data, error } = await supabase.functions.invoke('extract-inventory', { body });
-  if (error) throw error;
-  return captureIntentSchema.parse(data?.intent);
+  const result = await pocketbase.send<{ intent: unknown }>('/api/iceage/extract', {
+    method: 'POST',
+    body,
+  });
+  return captureIntentSchema.parse(result.intent);
 }
 
 export function useCaptureHouseholdId() {

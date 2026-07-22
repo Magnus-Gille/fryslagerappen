@@ -27,7 +27,7 @@ type Props = {
   onClose: () => void;
 };
 
-const categories = ['Frukt & bär', 'Lagad mat', 'Fisk', 'Glass & dessert'];
+const categories = ['Torrvaror', 'Konserver', 'Frukt & bär', 'Lagad mat', 'Fisk', 'Glass & dessert'];
 
 const manualSuggestion: Omit<AddItemInput, 'locationId'> = {
   name: '',
@@ -237,9 +237,9 @@ export function AddItemModal({ visible, onClose }: Props) {
               </Field>
 
               <View style={styles.twoColumns}>
-                <Field label="Infrysning" style={styles.column}>
+                <Field label="Lagrad sedan" style={styles.column}>
                   <TextInput
-                    accessibilityLabel="Infrysningsdatum"
+                    accessibilityLabel="Lagrad sedan datum"
                     value={form.frozenOn}
                     onChangeText={(value) => update('frozenOn', value)}
                     placeholder="ÅÅÅÅ-MM-DD"
