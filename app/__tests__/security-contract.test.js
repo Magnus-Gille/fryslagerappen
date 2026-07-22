@@ -15,6 +15,10 @@ const helpers = fs.readFileSync(
   'utf8',
 );
 const forwardMigration = migration.split('}, (app) => {')[0];
+const pagesWorkflow = fs.readFileSync(
+  path.join(__dirname, '../../.github/workflows/deploy-pages.yml'),
+  'utf8',
+);
 
 describe('M5 backend security contract', () => {
   it('scopes every user-readable collection to the authenticated household', () => {
@@ -49,5 +53,9 @@ describe('M5 backend security contract', () => {
     expect(helpers).toContain('function optionalUploadedFiles(e, field)');
     expect(helpers).toContain('startsWith("multipart/form-data")');
     expect(helpers).toContain('http: no such file');
+  });
+
+  it('does not publish the private tailnet endpoint in the public web bundle', () => {
+    expect(pagesWorkflow).not.toContain('EXPO_PUBLIC_ICEAGE_API_URL');
   });
 });

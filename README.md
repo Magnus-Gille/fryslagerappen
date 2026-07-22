@@ -41,6 +41,10 @@ Appen använder inga produktionshemligheter i repot. Kopiera
 som `scripts/deploy-m5.sh` skapar. Konton, media och lagerdata lämnar inte den
 privata infrastrukturen.
 
+Den publika GitHub Pages-versionen byggs avsiktligt utan den privata
+serveradressen och fortsätter därför som ett lokalt demo. Den riktiga
+delningsfunktionen aktiveras bara i privata native-byggen.
+
 ## Licens
 
 Projektet är öppen källkod under [MIT-licensen](./LICENSE). Tredjepartskod och

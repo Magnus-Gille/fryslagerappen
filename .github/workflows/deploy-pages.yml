@@ -41,8 +41,6 @@ jobs:
 
       - name: Build static web output
         run: npm run build:web
-        env:
-          EXPO_PUBLIC_ICEAGE_API_URL: ${{ vars.EXPO_PUBLIC_ICEAGE_API_URL }}
 
       - name: Disable Jekyll processing
         run: touch dist/.nojekyll

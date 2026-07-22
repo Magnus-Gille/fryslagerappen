@@ -68,8 +68,6 @@ inferencekonfiguration stannar på M5.
    Tailscale-tailnet.
 2. Deploya den pinnade, checksummeverifierade PocketBase-versionen till M5.
 3. Lägg M5:s Tailscale Serve-URL i `app/.env.local`.
-4. Sätt samma URL som GitHub Actions-variabeln
-   `EXPO_PUBLIC_ICEAGE_API_URL` för webbbygget.
 
 ```bash
 ./scripts/deploy-m5.sh
@@ -78,6 +76,11 @@ printf '%s\n' 'EXPO_PUBLIC_ICEAGE_API_URL=https://m5.example-tailnet.ts.net' > a
 
 Om URL:en saknas kör appen det befintliga lokala demoläget; foto, röst,
 inloggning och delning är då avsiktligt avstängda.
+
+GitHub Pages exporteras alltid utan backend-URL. Att lägga tailnet-adressen i
+en publik webb-bundle skulle röja privat infrastruktur även om Tailscale
+fortfarande blockerar åtkomst. Använd privata native-byggen för autentiserat
+läge.
 
 Autentisering sker med e-post och lösenord mot PocketBase på M5.
 Native-sessionen lagras i iOS Keychain/Android Keystore via

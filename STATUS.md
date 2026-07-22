@@ -17,9 +17,9 @@ the private tailnet infrastructure.
 - PocketBase 0.39.8 runs as a hardened user service on M5, bound only to
   loopback. It uses the existing M5 Whisper and llama-swap workers; their URLs
   remain configurable so Orin Nano can take over either workload later.
-- The public GitHub Pages app remains usable as a local demo when no backend URL
-  is configured. Authenticated mode requires the viewing device to be on the
-  tailnet.
+- The public GitHub Pages app is intentionally built without a private backend
+  URL and remains a local demo. Authenticated mode is enabled only in private
+  native builds on devices connected to the tailnet.
 
 ## Verified
 
@@ -35,7 +35,8 @@ the private tailnet infrastructure.
   were removed after the remote tests.
 - Expo Doctor 20/20, ESLint, TypeScript, 7 Jest suites / 22 tests, static web
   export, a native iOS simulator build, migration validation, Bash syntax, Git
-  whitespace checks, and secret scanning pass.
+  whitespace checks, and secret scanning pass. The simulator login screen was
+  visually inspected after launch; its disabled action state was corrected.
 - `npm audit --omit=dev` reports 11 moderate Expo-toolchain advisories and no
   high or critical findings. The proposed forced fix is an incompatible Expo
   downgrade and remains deferred.
@@ -53,6 +54,6 @@ the private tailnet infrastructure.
 ## Next step
 
 Approve Tailscale Serve, set `EXPO_PUBLIC_ICEAGE_API_URL` to the resulting
-private HTTPS endpoint for local and GitHub Pages builds, then complete the
-simulator login/capture walkthrough and install the development build on the
-iPhone.
+private HTTPS endpoint in the ignored native app environment, then complete
+the simulator login/capture walkthrough and install the development build on
+the iPhone.

@@ -16,9 +16,10 @@ export function AuthScreen() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>();
+  const canSubmit = Boolean(email.trim()) && password.length >= 12 && !busy;
 
   async function submit() {
-    if (!email.trim() || password.length < 12 || busy) return;
+    if (!canSubmit) return;
     setBusy(true);
     setMessage(undefined);
     try {
@@ -68,9 +69,9 @@ export function AuthScreen() {
           {message && <ThemedText type="small" style={{ color: theme.warningText }}>{message}</ThemedText>}
           <Pressable
             accessibilityRole="button"
-            disabled={busy || !email.trim() || password.length < 12}
+            disabled={!canSubmit}
             onPress={submit}
-            style={[styles.primary, { backgroundColor: theme.primary }]}>
+            style={[styles.primary, { backgroundColor: canSubmit ? theme.primary : theme.backgroundElement }]}>
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <ThemedText type="smallBold" style={styles.white}>{mode === 'signin' ? 'Logga in' : 'Skapa konto'}</ThemedText>}
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
