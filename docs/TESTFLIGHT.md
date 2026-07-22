@@ -59,7 +59,8 @@ Från repots rot:
 Skriptet kräver den privata HTTPS-adressen i `app/.env.local`, genererar ett
 stigande buildnummer, skapar en signerad App Store-archive och laddar upp den
 till App Store Connect. Inga Apple-nycklar eller backendhemligheter skrivs till
-repot. När Apple har behandlat bygget väljs det i gruppen **Familjen**.
+repot, och den lokala temporära arkiven raderas efter uppladdningen. När Apple
+har behandlat bygget väljs det i gruppen **Familjen**.
 
 Telefonloggar för testfasen kan läsas utan telefonkabel med:
 

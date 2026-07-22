@@ -6,24 +6,42 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 app_dir="$repo_root/app"
 team_id="${ICEAGE_APPLE_TEAM_ID:-7C6WF6GFZ4}"
 build_number="${EXPO_IOS_BUILD_NUMBER:-$(date -u +%y%m%d%H%M%S)}"
+
+if [[ ! "$build_number" =~ ^[0-9]+$ ]]; then
+  echo "EXPO_IOS_BUILD_NUMBER must contain digits only." >&2
+  exit 1
+fi
+
+if [[ ! "$team_id" =~ ^[A-Z0-9]{10}$ ]]; then
+  echo "ICEAGE_APPLE_TEAM_ID must be a 10-character Apple Team ID." >&2
+  exit 1
+fi
+
 archive_path="${TMPDIR:-/tmp}/Fryslagerappen-${build_number}.xcarchive"
 export_path="${TMPDIR:-/tmp}/Fryslagerappen-${build_number}-upload"
 export_options="$(mktemp "${TMPDIR:-/tmp}/fryslagerappen-export.XXXXXX.plist")"
 
 cleanup() {
   rm -f "$export_options"
+  rm -rf "$archive_path" "$export_path"
 }
 trap cleanup EXIT
 
-if [[ -n "${EXPO_PUBLIC_ICEAGE_API_URL:-}" ]] &&
-  [[ ! "$EXPO_PUBLIC_ICEAGE_API_URL" =~ ^https://[^[:space:]]+$ ]]; then
-  echo "EXPO_PUBLIC_ICEAGE_API_URL must be a private HTTPS URL." >&2
-  exit 1
+backend_url="${EXPO_PUBLIC_ICEAGE_API_URL:-}"
+if [[ -z "$backend_url" ]] && [[ -f "$app_dir/.env.local" ]]; then
+  backend_url="$(
+    sed -n 's/^[[:space:]]*EXPO_PUBLIC_ICEAGE_API_URL[[:space:]]*=[[:space:]]*//p' "$app_dir/.env.local" |
+      head -n 1 |
+      tr -d '\r'
+  )"
+  backend_url="${backend_url#\"}"
+  backend_url="${backend_url%\"}"
+  backend_url="${backend_url#\'}"
+  backend_url="${backend_url%\'}"
 fi
 
-if [[ -z "${EXPO_PUBLIC_ICEAGE_API_URL:-}" ]] &&
-  ! grep -Eq '^EXPO_PUBLIC_ICEAGE_API_URL=https://[^[:space:]]+$' "$app_dir/.env.local" 2>/dev/null; then
-  echo "Missing the private HTTPS backend URL in EXPO_PUBLIC_ICEAGE_API_URL or app/.env.local." >&2
+if [[ ! "$backend_url" =~ ^https://[^[:space:]]+$ ]]; then
+  echo "Missing or invalid private HTTPS backend URL in EXPO_PUBLIC_ICEAGE_API_URL or app/.env.local." >&2
   exit 1
 fi
 
@@ -51,7 +69,7 @@ PLIST
 echo "Preparing TestFlight build ${build_number}..."
 (
   cd "$app_dir"
-  EXPO_IOS_BUILD_NUMBER="$build_number" npx expo prebuild --platform ios
+  EXPO_IOS_BUILD_NUMBER="$build_number" npx expo prebuild --platform ios --clean
 
   if [[ ! -d ios/Fryslagerappen.xcworkspace ]]; then
     echo "Expo prebuild did not create the expected Xcode workspace." >&2
