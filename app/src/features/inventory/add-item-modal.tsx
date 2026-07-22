@@ -13,6 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { CaptureFlow } from '@/features/capture/capture-flow';
+import { findLocationId, toAddItemInput, type CaptureIntent } from '@/features/capture/capture-intent';
 import { useTheme } from '@/hooks/use-theme';
 
 import { useInventory } from './inventory-provider';
@@ -27,69 +29,105 @@ type Props = {
 
 const categories = ['Frukt & bär', 'Lagad mat', 'Fisk', 'Glass & dessert'];
 
-const suggestions: Record<CaptureMode, Omit<AddItemInput, 'locationId'>> = {
-  photo: {
-    name: 'Blåbärssylt',
-    category: 'Frukt & bär',
-    quantity: 2,
-    unit: 'burkar',
-    frozenOn: '2026-07-22',
-    eatBefore: '2027-01-22',
-    dateSource: 'label',
-    note: 'Etikett avläst från simulerat foto',
-  },
-  voice: {
-    name: 'Äppelmos',
-    category: 'Frukt & bär',
-    quantity: 3,
-    unit: 'burkar',
-    frozenOn: '2026-07-22',
-    eatBefore: '2027-01-22',
-    dateSource: 'estimated',
-    note: '“Tre burkar äppelmos i frysboxen nere”',
-  },
-  manual: {
-    name: '',
-    category: 'Lagad mat',
-    quantity: 1,
-    unit: 'låda',
-    frozenOn: '2026-07-22',
-    eatBefore: '',
-    dateSource: 'manual',
-    note: '',
-  },
+const manualSuggestion: Omit<AddItemInput, 'locationId'> = {
+  name: '',
+  category: 'Lagad mat',
+  quantity: 1,
+  unit: 'låda',
+  frozenOn: new Date().toISOString().slice(0, 10),
+  eatBefore: '',
+  dateSource: 'manual',
+  note: '',
 };
 
 export function AddItemModal({ visible, onClose }: Props) {
   const theme = useTheme();
-  const { state, addItem } = useInventory();
+  const { state, addItem, removeQuantity, moveItem, consumeItem } = useInventory();
   const [mode, setMode] = useState<CaptureMode | null>(null);
+  const [intent, setIntent] = useState<CaptureIntent | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
   const [form, setForm] = useState<AddItemInput>({
-    ...suggestions.voice,
-    locationId: 'downstairs',
+    ...manualSuggestion,
+    locationId: 'upstairs',
   });
 
   function chooseMode(nextMode: CaptureMode) {
     setMode(nextMode);
-    setForm({
-      ...suggestions[nextMode],
-      locationId: nextMode === 'manual' ? 'upstairs' : 'downstairs',
-    });
+    setIntent(null);
+    setError(undefined);
+    if (nextMode === 'manual') {
+      setForm({ ...manualSuggestion, locationId: state.locations[0]?.id ?? 'upstairs' });
+    }
+  }
+
+  function captureComplete(nextIntent: CaptureIntent) {
+    setIntent(nextIntent);
+    if (nextIntent.action === 'add') setForm(toAddItemInput(nextIntent, state.locations));
   }
 
   function update<K extends keyof AddItemInput>(key: K, value: AddItemInput[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function save() {
+  async function save() {
     if (!form.name.trim()) return;
-    addItem({ ...form, name: form.name.trim(), quantity: Math.max(1, form.quantity) });
-    setMode(null);
-    onClose();
+    setBusy(true);
+    setError(undefined);
+    try {
+      await addItem({ ...form, name: form.name.trim(), quantity: Math.max(1, form.quantity) });
+      close();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'Det gick inte att spara varan.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyCapturedChange() {
+    if (!intent || intent.action === 'add') return;
+    const wanted = intent.name.toLocaleLowerCase('sv-SE');
+    const activeItems = state.items.filter((entry) => entry.status === 'active');
+    const exactMatches = activeItems.filter(
+      (entry) => entry.name.toLocaleLowerCase('sv-SE') === wanted,
+    );
+    const partialMatches = activeItems.filter(
+      (entry) =>
+        entry.name.toLocaleLowerCase('sv-SE').includes(wanted) ||
+        wanted.includes(entry.name.toLocaleLowerCase('sv-SE')),
+    );
+    const matches = exactMatches.length > 0 ? exactMatches : partialMatches;
+    if (matches.length === 0) {
+      setError(`Hittade ingen aktiv vara som matchar “${intent.name}”.`);
+      return;
+    }
+    if (matches.length > 1) {
+      setError(`Hittade ${matches.length} varor som matchar “${intent.name}”. Använd en mer exakt beskrivning.`);
+      return;
+    }
+    const [item] = matches;
+    setBusy(true);
+    setError(undefined);
+    try {
+      if (intent.action === 'remove') await removeQuantity(item.id, intent.quantity);
+      if (intent.action === 'consume') await consumeItem(item.id);
+      if (intent.action === 'move') {
+        const destinationId = findLocationId(intent.destinationName, state.locations);
+        if (!destinationId) throw new Error('Kunde inte hitta målplatsen.');
+        await moveItem(item.id, destinationId);
+      }
+      close();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'Ändringen misslyckades.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   function close() {
     setMode(null);
+    setIntent(null);
+    setError(undefined);
     onClose();
   }
 
@@ -115,6 +153,15 @@ export function AddItemModal({ visible, onClose }: Props) {
 
           {mode === null ? (
             <CaptureChooser onChoose={chooseMode} />
+          ) : mode !== 'manual' && intent === null ? (
+            <CaptureFlow mode={mode} onComplete={captureComplete} />
+          ) : intent && intent.action !== 'add' ? (
+            <CapturedChangeConfirmation
+              intent={intent}
+              busy={busy}
+              error={error}
+              onConfirm={applyCapturedChange}
+            />
           ) : (
             <ScrollView
               keyboardShouldPersistTaps="handled"
@@ -223,9 +270,26 @@ export function AddItemModal({ visible, onClose }: Props) {
                 </View>
               )}
 
+              {intent && intent.uncertainFields.length > 0 && (
+                <View style={[styles.notice, { backgroundColor: theme.warningSoft }]}>
+                  <ThemedText type="smallBold" style={{ color: theme.warningText }}>
+                    Kontrollera extra: {intent.uncertainFields.join(', ')}
+                  </ThemedText>
+                  <ThemedText type="small" style={{ color: theme.warningText }}>
+                    Tolkningen är {Math.round(intent.confidence * 100)} % säker.
+                  </ThemedText>
+                </View>
+              )}
+
+              {error && (
+                <ThemedText type="small" style={{ color: theme.warningText }}>
+                  {error}
+                </ThemedText>
+              )}
+
               <Pressable
                 accessibilityRole="button"
-                disabled={!form.name.trim()}
+                disabled={!form.name.trim() || busy}
                 onPress={save}
                 style={({ pressed }) => [
                   styles.saveButton,
@@ -233,7 +297,7 @@ export function AddItemModal({ visible, onClose }: Props) {
                   pressed && styles.pressed,
                 ]}>
                 <ThemedText type="smallBold" style={styles.saveText}>
-                  Spara i lagret
+                  {busy ? 'Sparar …' : 'Spara i lagret'}
                 </ThemedText>
               </Pressable>
             </ScrollView>
@@ -244,6 +308,46 @@ export function AddItemModal({ visible, onClose }: Props) {
   );
 }
 
+function CapturedChangeConfirmation({
+  intent,
+  busy,
+  error,
+  onConfirm,
+}: {
+  intent: CaptureIntent;
+  busy: boolean;
+  error?: string;
+  onConfirm: () => void;
+}) {
+  const theme = useTheme();
+  const actionLabel =
+    intent.action === 'remove'
+      ? `Ta ut ${intent.quantity} ${intent.unit}`
+      : intent.action === 'consume'
+        ? 'Markera som förbrukad'
+        : `Flytta till ${intent.destinationName ?? 'annan plats'}`;
+  return (
+    <View style={styles.changeConfirmation}>
+      <View style={[styles.confidenceIcon, { backgroundColor: theme.primarySoft }]}>
+        <ThemedText style={styles.confidenceEmoji}>🎙️</ThemedText>
+      </View>
+      <ThemedText type="title">Ändra {intent.name}?</ThemedText>
+      <ThemedText themeColor="textSecondary" style={styles.changeCopy}>
+        {actionLabel}. Inget ändras förrän du bekräftar.
+      </ThemedText>
+      {intent.transcript && (
+        <View style={[styles.transcript, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="caption" themeColor="textSecondary">“{intent.transcript}”</ThemedText>
+        </View>
+      )}
+      {error && <ThemedText type="small" style={{ color: theme.warningText }}>{error}</ThemedText>}
+      <Pressable accessibilityRole="button" disabled={busy} onPress={onConfirm} style={[styles.saveButton, styles.changeButton, { backgroundColor: theme.primary }]}>
+        <ThemedText type="smallBold" style={styles.saveText}>{busy ? 'Synkar …' : `Bekräfta: ${actionLabel}`}</ThemedText>
+      </Pressable>
+    </View>
+  );
+}
+
 function CaptureChooser({ onChoose }: { onChoose: (mode: CaptureMode) => void }) {
   const theme = useTheme();
   return (
@@ -251,7 +355,7 @@ function CaptureChooser({ onChoose }: { onChoose: (mode: CaptureMode) => void })
       <View style={styles.chooserHeading}>
         <ThemedText type="title">Hur vill du börja?</ThemedText>
         <ThemedText themeColor="textSecondary">
-          Prototypen simulerar tolkningen så att vi kan testa flödet utan att skicka foton eller ljud.
+          Ta ett foto, säg vad som händer och kontrollera förslaget innan det synkas.
         </ThemedText>
       </View>
       <CaptureButton
@@ -275,7 +379,7 @@ function CaptureChooser({ onChoose }: { onChoose: (mode: CaptureMode) => void })
       />
       <View style={[styles.localBadge, { backgroundColor: theme.successSoft }]}>
         <ThemedText type="caption" style={{ color: theme.successText }}>
-          ● Lokal prototyp · inget lämnar enheten
+          🔒 Du bekräftar varje ändring innan den sparas
         </ThemedText>
       </View>
     </View>
@@ -374,6 +478,10 @@ function ChoiceChip({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   safeArea: { flex: 1 },
+  changeConfirmation: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.five, gap: Spacing.three },
+  changeCopy: { maxWidth: 480, textAlign: 'center' },
+  transcript: { maxWidth: 480, borderRadius: Radius.medium, padding: Spacing.three },
+  changeButton: { width: '100%', maxWidth: 480 },
   header: {
     height: 56,
     paddingHorizontal: Spacing.three,

@@ -5,6 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ThemedText } from '@/components/themed-text';
 import { AddItemModal } from '@/features/inventory/add-item-modal';
 import { InventoryCard } from '@/features/inventory/inventory-card';
+import { HouseholdMenu } from '@/features/household/household-menu';
 import { selectActiveItems } from '@/features/inventory/inventory-state';
 import { useInventory } from '@/features/inventory/inventory-provider';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -13,10 +14,11 @@ import { useTheme } from '@/hooks/use-theme';
 export default function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { state, eatSoonItems, takeOne, moveItem, consumeItem } = useInventory();
+  const { state, eatSoonItems, syncStatus, takeOne, moveItem, consumeItem } = useInventory();
   const [query, setQuery] = useState('');
   const [locationId, setLocationId] = useState<string | undefined>();
   const [showAdd, setShowAdd] = useState(false);
+  const [showHousehold, setShowHousehold] = useState(false);
 
   const visibleItems = useMemo(
     () => selectActiveItems(state, query, locationId),
@@ -45,15 +47,21 @@ export default function HomeScreen() {
               <View style={styles.syncRow}>
                 <View style={[styles.syncDot, { backgroundColor: theme.successText }]} />
                 <ThemedText type="caption" themeColor="textTertiary">
-                  Lokal prototyp · uppdaterad nyss
+                  {syncStatus === 'local'
+                    ? 'Demoläge · anslut Supabase för delning'
+                    : syncStatus === 'saving'
+                      ? 'Synkar ändringen …'
+                      : syncStatus === 'error'
+                        ? 'Synkfel · försöker igen'
+                        : 'Delat lager · uppdaterat nyss'}
                 </ThemedText>
               </View>
             </View>
-            <View style={[styles.avatar, { backgroundColor: theme.primaryStrong }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Öppna hushållsinställningar" onPress={() => setShowHousehold(true)} style={[styles.avatar, { backgroundColor: theme.primaryStrong }]}>
               <ThemedText type="smallBold" style={styles.avatarText}>
                 F
               </ThemedText>
-            </View>
+            </Pressable>
           </View>
 
           <View style={[styles.search, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -193,6 +201,7 @@ export default function HomeScreen() {
       </View>
 
       <AddItemModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      <HouseholdMenu visible={showHousehold} onClose={() => setShowHousehold(false)} />
     </SafeAreaView>
   );
 }

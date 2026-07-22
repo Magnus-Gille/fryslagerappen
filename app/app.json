@@ -8,7 +8,7 @@
     "scheme": "fryslagerappen",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.example.fryslagerappen",
+      "bundleIdentifier": "ai.gille.fryslagerappen",
       "icon": "./assets/expo.icon",
       "supportsTablet": false,
       "infoPlist": {
@@ -18,7 +18,7 @@
       }
     },
     "android": {
-      "package": "com.example.fryslagerappen",
+      "package": "ai.gille.fryslagerappen",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
