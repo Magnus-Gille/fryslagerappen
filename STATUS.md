@@ -3,7 +3,7 @@
 ## Phase
 
 Public product foundation and prototype planning. The sanitized app-development
-baseline is published through PR #1 under the MIT license.
+baseline is published on `main` under the MIT license.
 
 ## Current work
 
@@ -12,11 +12,11 @@ baseline is published through PR #1 under the MIT license.
   rather than exposed through the public repository.
 - Expo SDK 57 / React Native / TypeScript scaffold is installed and verified.
 - PRD, development guide, CI, Dependabot, and the epic roadmap with eight
-  user-testing sessions are included in PR #1.
+  user-testing sessions are included in the public baseline.
 - Git history, tracked content, app identifiers, and commit metadata were
   sanitized before publication; local source audio and transcript remain
   ignored and untracked.
-- Public CI run `29908795788` passed every job on 2026-07-22.
+- Public CI runs on `main` and pull requests.
 
 ## Blockers
 
