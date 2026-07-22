@@ -13,6 +13,7 @@ mellan hemmets medlemmar och tydligt markerade "ät snart"-rekommendationer.
 - [Roadmap och epics](./docs/ROADMAP.md)
 - [Utvecklingsmiljö](./docs/DEVELOPMENT.md)
 - [Körbar tvåminutersdemo](./docs/DEMO.md)
+- [Dela appen via TestFlight](./docs/TESTFLIGHT.md)
 
 ## Teknik
 

@@ -45,6 +45,10 @@ the private tailnet infrastructure.
 - The public GitHub Pages app is intentionally built without a private backend
   URL and remains a local demo. Authenticated mode is enabled only in private
   native builds on devices connected to the tailnet.
+- App Store Connect now has the Fryslagerappen record and an automatically
+  distributed internal TestFlight group named `Familjen`. A checked-in upload
+  script creates monotonically versioned, company-team-signed releases without
+  storing Apple credentials or the private backend URL in Git.
 
 ## Verified
 
@@ -91,12 +95,22 @@ the private tailnet infrastructure.
 - The telemetry-enabled company-team Release build is installed on the paired
   iPhone as version 1.0.0 (bundle version 1). CoreDevice verified the installed
   app; automatic foreground launch was denied only because the phone was locked.
+- Version 1.0.0 build 2607222256 was archived with the company team, accepted by
+  App Store Connect, processed successfully, and attached to the internal
+  `Familjen` group. Magnus is invited as the first internal tester.
+- The TestFlight-ready configuration was verified by Expo Doctor 20/20, ESLint,
+  TypeScript, 10 Jest suites / 43 tests, a static web export, a signed device
+  archive, and a native Release build launched and visually inspected in the
+  iPhone 16e simulator.
 - `npm audit --omit=dev` reports 11 moderate Expo-toolchain advisories and no
   high or critical findings. The proposed forced fix is an incompatible Expo
   downgrade and remains deferred.
 
 ## Remaining handoffs
 
+- Sara must be added as a narrowly scoped App Store Connect user using her Apple
+  Account email, then added to `Familjen`. Her iPhone must also join the private
+  Tailscale tailnet before the app can reach M5.
 - Apple login still needs one unlocked-device end-to-end attempt on the paired
   iPhone. The installed build and M5 provider are ready, and its stage-by-stage
   result will be visible immediately through the telemetry reader.
@@ -108,7 +122,7 @@ the private tailnet infrastructure.
 
 ## Next step
 
-Unlock the paired iPhone, open Fryslagerappen, and tap **Sign in with Apple**.
-Inspect the result with `./scripts/show-phone-telemetry.sh`; then run the
-documented two-minute demo and the two-person contextual tests with Magnus and
-Sara.
+Follow `docs/TESTFLIGHT.md` to add Sara to App Store Connect, the `Familjen`
+group, and Tailscale. Then install the TestFlight build on both phones, attempt
+**Sign in with Apple**, inspect `./scripts/show-phone-telemetry.sh`, and run the
+documented two-person contextual test.
