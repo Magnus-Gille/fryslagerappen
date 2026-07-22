@@ -84,9 +84,7 @@ the private tailnet infrastructure.
 
 - Apple login cannot be exercised end-to-end or installed on the paired phone
   until the `ai.gille.fryslagerappen` App ID is enabled for Sign in with Apple
-  and the matching team/key/client secret is configured on M5. Two existing
-  `.p8` files were found locally but were not used because their owning team and
-  authorized capability have not been verified.
+  and the matching team/key/client secret is configured on M5.
 - The planned SQLite persistence and sync queue are not implemented yet. The
   authenticated prototype currently depends on PocketBase being reachable;
   local demo data resets when the app process restarts.
