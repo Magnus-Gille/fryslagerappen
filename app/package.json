@@ -58,7 +58,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build:web": "expo export --platform web --clear",
+    "build:web": "EXPO_WEB_BASE_URL=/fryslagerappen expo export --platform web --clear",
     "doctor": "expo-doctor",
     "lint": "expo lint",
     "test": "jest --runInBand --passWithNoTests",

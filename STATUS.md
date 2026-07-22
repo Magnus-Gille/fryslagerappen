@@ -28,8 +28,10 @@ the private tailnet infrastructure.
   capture also accepts an existing library image, so the real M5 path is
   demonstrable in iOS Simulator without pretending that its camera works.
 - PocketBase 0.39.8 runs as a hardened user service on M5, bound only to
-  loopback. It uses the existing M5 Whisper and llama-swap workers; their URLs
-  remain configurable so Orin Nano can take over either workload later.
+  loopback and is exposed to enrolled devices through private Tailscale Serve
+  HTTPS; Funnel remains disabled. It uses the existing M5 Whisper and
+  llama-swap workers; their URLs remain configurable so Orin Nano can take over
+  either workload later.
 - The public GitHub Pages app is intentionally built without a private backend
   URL and remains a local demo. Authenticated mode is enabled only in private
   native builds on devices connected to the tailnet.
@@ -47,7 +49,7 @@ the private tailnet infrastructure.
   issue invitations.
 - All synthetic accounts, households, items, events, invitations, and quotas
   were removed after the remote tests.
-- Expo Doctor 20/20, ESLint, TypeScript, 8 Jest suites / 28 tests, static web
+- Expo Doctor 20/20, ESLint, TypeScript, 8 Jest suites / 30 tests, static web
   export, a native iOS simulator build, migration validation, Bash syntax, Git
   whitespace checks, and secret scanning pass. The simulator login screen was
   visually inspected after launch; its disabled action state was corrected.
@@ -62,24 +64,24 @@ the private tailnet infrastructure.
   fields.
 - Migration `1784740000_model_homes_and_storage_types.js` is applied on M5; the
   service is active and healthy, and no disposable Home or inventory data remains.
+- A company-team-signed Release build with the branded icon and private M5
+  endpoint was installed on Magnus's paired iPhone 17 Pro. CoreDevice verified
+  version 1.0.0 and bundle ID `ai.gille.fryslagerappen`; foreground launch was
+  deferred only because the phone was locked.
 - `npm audit --omit=dev` reports 11 moderate Expo-toolchain advisories and no
   high or critical findings. The proposed forced fix is an incompatible Expo
   downgrade and remains deferred.
 
 ## Remaining handoffs
 
-- Tailscale Serve needs its one-time tailnet approval before the loopback-only
-  M5 backend gains its private HTTPS endpoint. Funnel must remain disabled.
 - The planned SQLite persistence and sync queue are not implemented yet. The
   authenticated prototype currently depends on PocketBase being reachable;
   local demo data resets when the app process restarts.
-- Physical iPhone installation and the two-person contextual usability tests
-  still require the devices/participants; their outcomes must not be inferred
-  from automated or simulator checks.
+- The two-person contextual usability tests still require Magnus and Sara;
+  their outcomes must not be inferred from automated or simulator checks.
 
 ## Next step
 
-Run the documented two-minute Simulator demo now. For a physical iPhone,
-approve Tailscale Serve, set `EXPO_PUBLIC_ICEAGE_API_URL` to the resulting
-private HTTPS endpoint in the ignored native app environment, install the
-development build, and run the two-person contextual tests.
+Unlock the paired iPhone, open Fryslagerappen, and run the documented two-minute
+demo against the private M5 backend. Then run the two-person contextual tests
+with Magnus and Sara.
