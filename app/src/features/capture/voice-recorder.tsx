@@ -5,7 +5,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -18,24 +18,51 @@ export function VoiceRecorder({ onRecorded }: { onRecorded: (uri: string) => voi
   const recorderState = useAudioRecorderState(recorder, 100);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopping = useRef(false);
+
+  useEffect(
+    () => () => {
+      if (stopTimer.current) clearTimeout(stopTimer.current);
+    },
+    [],
+  );
+
+  async function stopAndSubmit() {
+    if (stopping.current) return;
+    stopping.current = true;
+    setBusy(true);
+    setError(undefined);
+    if (stopTimer.current) clearTimeout(stopTimer.current);
+    stopTimer.current = null;
+    try {
+      await recorder.stop();
+      await setAudioModeAsync({ allowsRecording: false });
+      if (!recorder.uri) throw new Error('Inget ljudklipp skapades.');
+      onRecorded(recorder.uri);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'Röstinspelningen misslyckades.');
+    } finally {
+      stopping.current = false;
+      setBusy(false);
+    }
+  }
 
   async function toggle() {
     if (busy) return;
+    if (recorderState.isRecording) {
+      await stopAndSubmit();
+      return;
+    }
     setBusy(true);
     setError(undefined);
     try {
-      if (recorderState.isRecording) {
-        await recorder.stop();
-        await setAudioModeAsync({ allowsRecording: false });
-        if (!recorder.uri) throw new Error('Inget ljudklipp skapades.');
-        onRecorded(recorder.uri);
-      } else {
-        const permission = await requestRecordingPermissionsAsync();
-        if (!permission.granted) throw new Error('Mikrofonbehörighet behövs för röstregistrering.');
-        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-        await recorder.prepareToRecordAsync();
-        recorder.record({ forDuration: 30 });
-      }
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission.granted) throw new Error('Mikrofonbehörighet behövs för röstregistrering.');
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      stopTimer.current = setTimeout(() => void stopAndSubmit(), 30_000);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Röstinspelningen misslyckades.');
     } finally {
