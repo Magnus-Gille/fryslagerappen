@@ -6,10 +6,8 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import { Pressable, useColorScheme, useWindowDimensions, View, StyleSheet } from 'react-native';
 
-import { ExternalLink } from './external-link';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
@@ -22,10 +20,10 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+            <TabButton>Lager</TabButton>
           </TabTrigger>
           <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
+            <TabButton>Historik</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -50,26 +48,28 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 export function CustomTabList(props: TabListProps) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const { width } = useWindowDimensions();
+  const compact = width < 600;
 
   return (
     <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.innerContainer, compact && styles.innerContainerCompact]}>
         <ThemedText type="smallBold" style={styles.brandText}>
-          Expo Starter
+          {compact ? '❄︎' : '❄︎ Fryslagerappen'}
         </ThemedText>
 
         {props.children}
 
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type="link">Docs</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
-          </Pressable>
-        </ExternalLink>
+        {!compact && (
+          <>
+            <View style={[styles.statusDot, { backgroundColor: colors.successText }]} />
+            <ThemedText type="caption" themeColor="textSecondary">
+              Lokal prototyp
+            </ThemedText>
+          </>
+        )}
       </ThemedView>
     </View>
   );
@@ -87,12 +87,16 @@ const styles = StyleSheet.create({
   innerContainer: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
+    borderRadius: 999,
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
     gap: Spacing.two,
-    maxWidth: MaxContentWidth,
+    maxWidth: MaxContentWidth + Spacing.six,
+  },
+  innerContainerCompact: {
+    paddingHorizontal: Spacing.three,
+    gap: Spacing.one,
   },
   brandText: {
     marginRight: 'auto',
@@ -105,11 +109,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
   },
-  externalPressable: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.three,
-  },
+  statusDot: { width: 7, height: 7, borderRadius: 4, marginLeft: Spacing.three },
 });

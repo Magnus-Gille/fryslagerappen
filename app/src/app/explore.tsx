@@ -1,180 +1,202 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useInventory } from '@/features/inventory/inventory-provider';
+import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
-  const theme = useTheme();
+const eventLabels = {
+  created: 'Lades till',
+  quantityChanged: 'Mängden ändrades',
+  moved: 'Flyttades',
+  consumed: 'Markerades som förbrukad',
+  restored: 'Återställdes',
+} as const;
 
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
+export default function HistoryScreen() {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { state, activeItems, archivedItems, restoreItem } = useInventory();
+  const bottomPadding = Math.max(insets.bottom, Spacing.three) + BottomTabInset + Spacing.four;
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
-          </ThemedText>
-
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
-        </ThemedView>
-
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]} edges={['top']}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}>
+        <View style={styles.content}>
+          <View style={styles.heading}>
+            <ThemedText type="smallBold" style={{ color: theme.primary }}>
+              ÖVERSIKT
             </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
+            <ThemedText type="title">Historik & tillit</ThemedText>
+            <ThemedText themeColor="textSecondary">
+              Se vad som ändrats och återställ misstag utan att bygga om lagerposten.
             </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+          </View>
 
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
+          <View style={styles.statsRow}>
+            <StatCard value={String(activeItems.length)} label="Aktiva varor" />
+            <StatCard value={String(state.locations.length)} label="Frysplatser" />
+            <StatCard value={String(state.events.length)} label="Ändringar nu" />
+          </View>
 
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
+          <View style={styles.section}>
+            <ThemedText type="sectionTitle">Nyligen borttaget</ThemedText>
+            {archivedItems.length === 0 ? (
+              <View style={[styles.emptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <ThemedText style={styles.emptyEmoji}>↩︎</ThemedText>
+                <View style={styles.flex}>
+                  <ThemedText type="itemTitle">Inget att återställa ännu</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Varor som markeras som förbrukade hamnar här.
+                  </ThemedText>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.list}>
+                {archivedItems.map((item) => (
+                  <View
+                    key={item.id}
+                    style={[styles.historyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    <View style={[styles.itemIcon, { backgroundColor: item.color }]}>
+                      <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
+                    </View>
+                    <View style={styles.flex}>
+                      <ThemedText type="itemTitle">{item.name}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {item.quantity} {item.unit} · {item.status === 'consumed' ? 'Förbrukad' : 'Kastad'}
+                      </ThemedText>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Återställ ${item.name}`}
+                      onPress={() => restoreItem(item.id)}
+                      style={[styles.restoreButton, { backgroundColor: theme.primarySoft }]}>
+                      <ThemedText type="caption" style={{ color: theme.primary }}>
+                        Återställ
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText type="sectionTitle">Den här sessionen</ThemedText>
+            <View style={[styles.timeline, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              {state.events.length === 0 ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  Dina ändringar visas här. Prova en snabbåtgärd i lagret.
+                </ThemedText>
+              ) : (
+                state.events.slice(0, 8).map((event, index) => {
+                  const item = state.items.find((entry) => entry.id === event.itemId);
+                  return (
+                    <View key={event.id} style={styles.timelineRow}>
+                      <View style={styles.timelineMarkerColumn}>
+                        <View style={[styles.timelineDot, { backgroundColor: theme.primary }]} />
+                        {index < Math.min(state.events.length, 8) - 1 && (
+                          <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+                        )}
+                      </View>
+                      <View style={[styles.timelineCopy, index > 0 && { borderTopColor: theme.border }]}>
+                        <ThemedText type="smallBold">{item?.name ?? 'Vara'}</ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {eventLabels[event.type]} · nyss
+                        </ThemedText>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </View>
+
+          <View style={[styles.safetyCard, { backgroundColor: theme.warningSoft }]}>
+            <ThemedText type="smallBold" style={{ color: theme.warningText }}>
+              Om datum i prototypen
             </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
+            <ThemedText type="small" style={{ color: theme.warningText }}>
+              “Ät snart” hjälper bara till med planering. Titta, lukta och gör alltid en egen bedömning.
             </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
 
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+function StatCard({ value, label }: { value: string; label: string }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <ThemedText type="sectionTitle" style={{ color: theme.primaryStrong }}>
+        {value}
+      </ThemedText>
+      <ThemedText type="caption" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
-  titleContainer: {
-    gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
+  flex: { flex: 1 },
+  screen: { flex: 1 },
+  scrollContent: { alignItems: 'center' },
+  content: {
     width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
+    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Platform.OS === 'web' ? 92 : Spacing.three,
+    gap: Spacing.five,
   },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
+  heading: { gap: Spacing.one },
+  statsRow: { flexDirection: 'row', gap: Spacing.two },
+  statCard: {
+    flex: 1,
+    minHeight: 92,
+    padding: Spacing.three,
+    borderWidth: 1,
+    borderRadius: Radius.large,
+    justifyContent: 'space-between',
   },
+  section: { gap: Spacing.three },
+  list: { gap: Spacing.two },
+  emptyCard: {
+    borderWidth: 1,
+    borderRadius: Radius.large,
+    padding: Spacing.four,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  emptyEmoji: { fontSize: 28, lineHeight: 34 },
+  historyCard: {
+    borderWidth: 1,
+    borderRadius: Radius.large,
+    padding: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  itemIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: Radius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemEmoji: { fontSize: 24, lineHeight: 30 },
+  restoreButton: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill },
+  timeline: { borderWidth: 1, borderRadius: Radius.large, padding: Spacing.three },
+  timelineRow: { minHeight: 54, flexDirection: 'row' },
+  timelineMarkerColumn: { width: 24, alignItems: 'center' },
+  timelineDot: { width: 9, height: 9, borderRadius: 5, marginTop: 6 },
+  timelineLine: { width: 1, flex: 1, marginVertical: 4 },
+  timelineCopy: { flex: 1, paddingBottom: Spacing.three },
+  safetyCard: { borderRadius: Radius.large, padding: Spacing.four, gap: Spacing.one },
 });

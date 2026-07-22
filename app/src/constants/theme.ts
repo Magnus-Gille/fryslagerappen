@@ -9,18 +9,40 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#172033',
+    background: '#F6F8FC',
+    surface: '#FFFFFF',
+    backgroundElement: '#EAF0F8',
+    backgroundSelected: '#DCE9F8',
+    textSecondary: '#5C667A',
+    textTertiary: '#7D8798',
+    border: '#E2E7EF',
+    primary: '#2368B1',
+    primaryStrong: '#164E8D',
+    primarySoft: '#E4F0FC',
+    accent: '#F07B51',
+    warningSoft: '#FFF0D9',
+    warningText: '#99521F',
+    successSoft: '#E4F3E9',
+    successText: '#276844',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F7F9FC',
+    background: '#101722',
+    surface: '#192332',
+    backgroundElement: '#243246',
+    backgroundSelected: '#2B4665',
+    textSecondary: '#BBC5D3',
+    textTertiary: '#91A0B3',
+    border: '#2D3A4C',
+    primary: '#75B5F4',
+    primaryStrong: '#A7D2FC',
+    primarySoft: '#1E3A58',
+    accent: '#FF9672',
+    warningSoft: '#49351E',
+    warningText: '#FFD39B',
+    successSoft: '#1F3E31',
+    successText: '#A9DFC1',
   },
 } as const;
 
@@ -59,6 +81,14 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+export const Radius = {
+  small: 10,
+  medium: 16,
+  large: 22,
+  xlarge: 30,
+  pill: 999,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
