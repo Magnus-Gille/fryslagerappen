@@ -1,4 +1,5 @@
-import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -19,10 +20,29 @@ type Props = {
 export function MoveItemModal({ item, locations, visible, onClose, onMove }: Props) {
   const theme = useTheme();
   const destinations = locations.filter((location) => location.id !== item?.locationId);
+  const [pendingLocationId, setPendingLocationId] = useState<string>();
+  const [error, setError] = useState<string>();
+  const busy = Boolean(pendingLocationId);
+
+  function close() {
+    if (busy) return;
+    setError(undefined);
+    onClose();
+  }
 
   async function choose(locationId: string) {
-    await onMove(locationId);
-    onClose();
+    if (busy) return;
+    setPendingLocationId(locationId);
+    setError(undefined);
+    try {
+      await onMove(locationId);
+      setError(undefined);
+      onClose();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'Varan kunde inte flyttas.');
+    } finally {
+      setPendingLocationId(undefined);
+    }
   }
 
   return (
@@ -30,10 +50,10 @@ export function MoveItemModal({ item, locations, visible, onClose, onMove }: Pro
       visible={visible}
       animationType="slide"
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
-      onRequestClose={onClose}>
+      onRequestClose={close}>
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" onPress={onClose}>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={close}>
             <ThemedText style={{ color: theme.primary }}>Stäng</ThemedText>
           </Pressable>
           <ThemedText type="itemTitle">Flytta vara</ThemedText>
@@ -52,6 +72,7 @@ export function MoveItemModal({ item, locations, visible, onClose, onMove }: Pro
                   key={location.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Flytta till ${location.name}`}
+                  disabled={busy}
                   onPress={() => void choose(location.id)}
                   style={({ pressed }) => [
                     styles.location,
@@ -67,7 +88,7 @@ export function MoveItemModal({ item, locations, visible, onClose, onMove }: Pro
                       {details.label}{location.description ? ` · ${location.description}` : ''}
                     </ThemedText>
                   </View>
-                  <ThemedText style={{ color: theme.primary }}>→</ThemedText>
+                  {pendingLocationId === location.id ? <ActivityIndicator color={theme.primary} /> : <ThemedText style={{ color: theme.primary }}>→</ThemedText>}
                 </Pressable>
               );
             })}
@@ -85,6 +106,7 @@ export function MoveItemModal({ item, locations, visible, onClose, onMove }: Pro
               Nuvarande plats: {storagePlaceLabel(locations.find((entry) => entry.id === item.locationId) ?? locations[0])}
             </ThemedText>
           )}
+          {error && <ThemedText type="small" style={{ color: theme.warningText }}>{error}</ThemedText>}
         </View>
       </SafeAreaView>
     </Modal>
