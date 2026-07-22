@@ -2,6 +2,8 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 import { authenticateWithApple } from '@/features/auth/apple-sign-in';
 
+type TelemetryReporter = (event: string, details?: Record<string, unknown>) => Promise<boolean>;
+
 type FakeCredential = {
   authorizationCode: string | null;
   email?: string | null;
@@ -29,8 +31,9 @@ function authHarness(providers: { name: string }[] = [{ name: 'apple' }]) {
 describe('native Apple sign-in', () => {
   it('exchanges the native one-time code with PocketBase and keeps the first-login name', async () => {
     const { apple, client, service } = authHarness();
+    const report = jest.fn<TelemetryReporter>().mockResolvedValue(true);
 
-    await expect(authenticateWithApple(client, apple)).resolves.toBe(true);
+    await expect(authenticateWithApple(client, apple, report)).resolves.toBe(true);
 
     expect(apple.signInAsync).toHaveBeenCalledWith({ requestedScopes: [0, 1] });
     expect(service.authWithOAuth2Code).toHaveBeenCalledWith(
@@ -40,6 +43,13 @@ describe('native Apple sign-in', () => {
       '',
       { displayName: 'Magnus Gille' },
     );
+    expect(report.mock.calls.map(([event]) => event)).toEqual([
+      'auth_apple_started',
+      'auth_apple_sheet_opened',
+      'auth_apple_code_received',
+      'auth_apple_exchange_started',
+      'auth_apple_succeeded',
+    ]);
   });
 
   it('checks backend configuration before opening the Apple sheet', async () => {
@@ -72,8 +82,27 @@ describe('native Apple sign-in', () => {
 
   it('treats a dismissed Apple sheet as cancellation instead of a login failure', async () => {
     const { apple, client } = authHarness();
+    const report = jest.fn<TelemetryReporter>().mockResolvedValue(true);
     apple.signInAsync.mockRejectedValue(Object.assign(new Error('cancelled'), { code: 'ERR_REQUEST_CANCELED' }));
 
-    await expect(authenticateWithApple(client, apple)).resolves.toBe(false);
+    await expect(authenticateWithApple(client, apple, report)).resolves.toBe(false);
+    expect(report).toHaveBeenLastCalledWith('auth_apple_cancelled', { stage: 'apple_sheet' });
+  });
+
+  it('reports a sanitized backend exchange failure without leaking the Apple code', async () => {
+    const { apple, client, service } = authHarness();
+    const report = jest.fn<TelemetryReporter>().mockResolvedValue(true);
+    service.authWithOAuth2Code.mockRejectedValue(
+      Object.assign(new Error('Only superusers can perform this action'), { status: 400 }),
+    );
+
+    await expect(authenticateWithApple(client, apple, report)).rejects.toThrow('Only superusers');
+
+    expect(report).toHaveBeenLastCalledWith('auth_apple_failed', {
+      stage: 'exchange',
+      status: 400,
+      errorMessage: 'Only superusers can perform this action',
+    });
+    expect(JSON.stringify(report.mock.calls)).not.toContain('one-time-code');
   });
 });

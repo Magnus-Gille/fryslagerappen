@@ -1,5 +1,11 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 
+import {
+  diagnosticError,
+  reportTelemetry,
+  type TelemetryReporter,
+} from '@/lib/telemetry';
+
 type AppleCredential = {
   authorizationCode: string | null;
   email?: string | null;
@@ -55,16 +61,26 @@ function isCancellation(error: unknown) {
 export async function authenticateWithApple(
   client: AppleAuthClient,
   apple: AppleAuthApi = AppleAuthentication,
+  report: TelemetryReporter = reportTelemetry,
 ): Promise<boolean> {
-  if (!(await apple.isAvailableAsync())) {
-    throw new Error('Apple-inloggning stöds inte på den här enheten.');
-  }
-
-  const authMethods = await client.collection('users').listAuthMethods();
-  const hasApple = authMethods.oauth2?.providers?.some((provider) => provider.name === 'apple');
-  if (!hasApple) throw new Error('Apple-inloggning är inte aktiverad på M5-servern.');
-
+  let stage = 'availability';
+  void report('auth_apple_started');
   try {
+    if (!(await apple.isAvailableAsync())) {
+      void report('auth_apple_unavailable', { stage });
+      throw new Error('Apple-inloggning stöds inte på den här enheten.');
+    }
+
+    stage = 'provider_config';
+    const authMethods = await client.collection('users').listAuthMethods();
+    const hasApple = authMethods.oauth2?.providers?.some((provider) => provider.name === 'apple');
+    if (!hasApple) {
+      void report('auth_apple_provider_missing', { stage });
+      throw new Error('Apple-inloggning är inte aktiverad på M5-servern.');
+    }
+
+    stage = 'apple_sheet';
+    void report('auth_apple_sheet_opened', { stage });
     const credential = await apple.signInAsync({
       requestedScopes: [
         apple.AppleAuthenticationScope.FULL_NAME,
@@ -74,7 +90,10 @@ export async function authenticateWithApple(
     if (!credential.authorizationCode) {
       throw new Error('Apple skickade ingen giltig inloggningskod. Försök igen.');
     }
+    void report('auth_apple_code_received', { stage });
 
+    stage = 'exchange';
+    void report('auth_apple_exchange_started', { stage });
     await client.collection('users').authWithOAuth2Code(
       'apple',
       credential.authorizationCode,
@@ -82,9 +101,14 @@ export async function authenticateWithApple(
       '',
       { displayName: displayName(credential) },
     );
+    void report('auth_apple_succeeded', { stage });
     return true;
   } catch (error) {
-    if (isCancellation(error)) return false;
+    if (isCancellation(error)) {
+      void report('auth_apple_cancelled', { stage });
+      return false;
+    }
+    void report('auth_apple_failed', { stage, ...diagnosticError(error) });
     throw error;
   }
 }

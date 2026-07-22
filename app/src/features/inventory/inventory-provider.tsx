@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/features/auth/auth-provider';
 import { useHome } from '@/features/home/home-provider';
 import { pocketbase } from '@/lib/pocketbase';
+import { diagnosticError, reportTelemetry } from '@/lib/telemetry';
 
 import {
   createInventoryState,
@@ -76,13 +77,37 @@ export function InventoryProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!isRemote || !home || !pocketbase) return;
     let active = true;
-    void loadRemote().catch(() => active && setSyncStatus('error'));
+    void loadRemote().catch((error) => {
+      if (!active) return;
+      void reportTelemetry('inventory_load_failed', {
+        stage: 'initial_load',
+        ...diagnosticError(error),
+      });
+      setSyncStatus('error');
+    });
+    const reloadFromRealtime = () => {
+      void loadRemote().catch((error) => {
+        if (!active) return;
+        void reportTelemetry('inventory_load_failed', {
+          stage: 'realtime_reload',
+          ...diagnosticError(error),
+        });
+        setSyncStatus('error');
+      });
+    };
     const subscriptions = Promise.all([
-      pocketbase.collection('items').subscribe('*', () => void loadRemote()),
-      pocketbase.collection('locations').subscribe('*', () => void loadRemote()),
-      pocketbase.collection('inventory_events').subscribe('*', () => void loadRemote()),
+      pocketbase.collection('items').subscribe('*', reloadFromRealtime),
+      pocketbase.collection('locations').subscribe('*', reloadFromRealtime),
+      pocketbase.collection('inventory_events').subscribe('*', reloadFromRealtime),
     ]);
-    void subscriptions.catch(() => active && setSyncStatus('error'));
+    void subscriptions.catch((error) => {
+      if (!active) return;
+      void reportTelemetry('inventory_realtime_failed', {
+        stage: 'subscribe',
+        ...diagnosticError(error),
+      });
+      setSyncStatus('error');
+    });
     return () => {
       active = false;
       void subscriptions.then((unsubscribe) => unsubscribe.forEach((stop) => void stop()));
@@ -90,7 +115,11 @@ export function InventoryProvider({ children }: PropsWithChildren) {
   }, [home, isRemote, loadRemote]);
 
   const runRemote = useCallback(
-    async (optimisticAction: Parameters<typeof inventoryReducer>[1], operation: () => Promise<unknown>) => {
+    async (
+      optimisticAction: Parameters<typeof inventoryReducer>[1],
+      operation: () => Promise<unknown>,
+      stage: string,
+    ) => {
       dispatch(optimisticAction);
       if (!isRemote) return;
       setSyncStatus('saving');
@@ -98,6 +127,10 @@ export function InventoryProvider({ children }: PropsWithChildren) {
         await operation();
         setSyncStatus('synced');
       } catch (error) {
+        void reportTelemetry('inventory_mutation_failed', {
+          stage,
+          ...diagnosticError(error),
+        });
         setSyncStatus('error');
         await loadRemote();
         throw error;
@@ -134,6 +167,10 @@ export function InventoryProvider({ children }: PropsWithChildren) {
           });
           await loadRemote();
         } catch (error) {
+          void reportTelemetry('inventory_mutation_failed', {
+            stage: 'add',
+            ...diagnosticError(error),
+          });
           setSyncStatus('error');
           throw error;
         }
@@ -144,6 +181,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
         await runRemote(
           { type: 'quantityDecremented', itemId },
           () => mutate(itemId, { action: 'remove', quantity: 1, expectedVersion: item.version }),
+          'take_one',
         );
       },
       removeQuantity: async (itemId, quantity) => {
@@ -153,6 +191,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
         await runRemote(
           { type: 'quantityRemoved', itemId, quantity: amount },
           () => mutate(itemId, { action: 'remove', quantity: amount, expectedVersion: item.version }),
+          'remove_quantity',
         );
       },
       moveItem: async (itemId, locationId) => {
@@ -161,6 +200,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
         await runRemote(
           { type: 'itemMoved', itemId, locationId },
           () => mutate(itemId, { action: 'move', locationId, expectedVersion: item.version }),
+          'move',
         );
       },
       consumeItem: async (itemId) => {
@@ -169,6 +209,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
         await runRemote(
           { type: 'itemConsumed', itemId },
           () => mutate(itemId, { action: 'consume', expectedVersion: item.version }),
+          'consume',
         );
       },
       restoreItem: async (itemId) => {
@@ -177,6 +218,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
         await runRemote(
           { type: 'itemRestored', itemId },
           () => mutate(itemId, { action: 'restore', expectedVersion: item.version }),
+          'restore',
         );
       },
       createStoragePlace: async (input) => {

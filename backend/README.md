@@ -23,6 +23,28 @@ The service listens only on `127.0.0.1:8090`. Tailscale Serve terminates HTTPS
 and makes it available only inside Magnus's tailnet. Tailscale Funnel must not
 be enabled for this service.
 
+## Phone test telemetry
+
+Private native builds send a small allowlisted diagnostic event at app launch,
+after the backend health probe, at each Apple-login stage, and when Home,
+inventory, realtime, mutation, or capture operations fail. Capture start and
+success timings are also recorded. The pre-login endpoint is limited to 8 KiB
+and 120 requests per source IP per minute. It accepts only event, build, device,
+stage, status, duration, and redacted error fields. It never accepts or stores
+photos, audio, transcripts, inventory, emails, passwords, auth tokens, or Apple
+authorization codes.
+
+Events use PocketBase's existing structured log database and stay inside the
+tailnet-hosted M5 service. From the repository root, show the latest events
+without opening the PocketBase dashboard or exposing its admin token:
+
+```bash
+./scripts/show-phone-telemetry.sh
+```
+
+Pass a number from 1–200 to change the result count. PocketBase log retention
+is controlled by its local Logs settings on M5.
+
 The public API uses `Home` terminology. PocketBase collection and relation
 names retain the original `household` wording as an internal compatibility
 detail so existing installations can migrate without rewriting identifiers.

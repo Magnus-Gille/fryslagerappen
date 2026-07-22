@@ -24,6 +24,30 @@ routerAdd("GET", "/api/iceage/health", (e) => {
   return e.json(200, { status: "ok", service: "iceage", inference: "local" });
 });
 
+routerAdd("POST", "/api/iceage/telemetry", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  lib.consumeTelemetryQuota(e);
+  const diagnostic = lib.telemetry(e.requestInfo().body || {});
+
+  $app.logger().info("client.telemetry",
+    "event", diagnostic.event,
+    "sessionId", diagnostic.sessionId,
+    "sequence", diagnostic.sequence,
+    "appVersion", diagnostic.appVersion,
+    "buildNumber", diagnostic.buildNumber,
+    "platform", diagnostic.platform,
+    "osVersion", diagnostic.osVersion,
+    "deviceModel", diagnostic.deviceModel,
+    "stage", diagnostic.stage,
+    "status", diagnostic.status,
+    "errorCode", diagnostic.errorCode,
+    "errorMessage", diagnostic.errorMessage,
+    "durationMs", diagnostic.durationMs,
+    "reachable", diagnostic.reachable,
+  );
+  return e.json(202, { accepted: true });
+}, $apis.bodyLimit(8 * 1024));
+
 routerAdd("POST", "/api/iceage/signup", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
   const body = lib.body(e);

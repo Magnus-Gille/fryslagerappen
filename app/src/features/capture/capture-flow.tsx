@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { diagnosticError, reportTelemetry } from '@/lib/telemetry';
 
 import { CameraCapture } from './camera-capture';
 import type { CaptureIntent } from './capture-intent';
@@ -26,10 +27,22 @@ export function CaptureFlow({ mode, onComplete }: { mode: 'photo' | 'voice'; onC
     }
     setBusy(true);
     setError(undefined);
+    const startedAt = Date.now();
+    const stage = photo && audioUri ? 'photo_voice' : photo ? 'photo' : 'voice';
+    void reportTelemetry('capture_extraction_started', { stage });
     try {
       const intent = await extractInventoryIntent({ homeId, photo, audioUri });
+      void reportTelemetry('capture_extraction_succeeded', {
+        stage,
+        durationMs: Date.now() - startedAt,
+      });
       onComplete(intent);
     } catch (nextError) {
+      void reportTelemetry('capture_extraction_failed', {
+        stage,
+        durationMs: Date.now() - startedAt,
+        ...diagnosticError(nextError),
+      });
       setError(nextError instanceof Error ? nextError.message : 'Tolkningen misslyckades. Försök igen.');
     } finally {
       setBusy(false);

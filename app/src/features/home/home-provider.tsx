@@ -2,6 +2,7 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 
 import { useAuth } from '@/features/auth/auth-provider';
 import { pocketbase } from '@/lib/pocketbase';
+import { diagnosticError, reportTelemetry } from '@/lib/telemetry';
 
 export type HomeRole = 'owner' | 'member';
 export type Home = { id: string; name: string; role: HomeRole; displayName: string };
@@ -58,7 +59,13 @@ export function HomeProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     Promise.resolve()
       .then(refresh)
-      .catch(() => setLoading(false));
+      .catch((error) => {
+        void reportTelemetry('home_load_failed', {
+          stage: 'initial_load',
+          ...diagnosticError(error),
+        });
+        setLoading(false);
+      });
   }, [refresh]);
 
   const value = useMemo<HomeContextValue>(

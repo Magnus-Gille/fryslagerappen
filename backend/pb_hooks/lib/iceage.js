@@ -33,6 +33,83 @@ const intentSchema = {
   additionalProperties: false,
 };
 
+const allowedTelemetryEvents = [
+  "app_started",
+  "backend_probe_succeeded",
+  "backend_probe_failed",
+  "auth_refresh_failed",
+  "auth_password_failed",
+  "auth_signup_failed",
+  "auth_apple_started",
+  "auth_apple_unavailable",
+  "auth_apple_provider_missing",
+  "auth_apple_sheet_opened",
+  "auth_apple_code_received",
+  "auth_apple_exchange_started",
+  "auth_apple_succeeded",
+  "auth_apple_cancelled",
+  "auth_apple_failed",
+  "home_load_failed",
+  "inventory_load_failed",
+  "inventory_realtime_failed",
+  "inventory_mutation_failed",
+  "capture_extraction_started",
+  "capture_extraction_succeeded",
+  "capture_extraction_failed",
+];
+const telemetryRateLimits = {};
+
+function telemetryText(value, max) {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, max);
+}
+
+function telemetryDiagnostic(value, max) {
+  return telemetryText(value, max)
+    .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "[email]")
+    .replace(/Bearer\s+[^\s]+/gi, "[credential]")
+    .replace(/\b(token|code|secret|password)=([^\s&]+)/gi, "$1=[credential]")
+    .replace(/\b[A-Za-z0-9_-]{24,}\b/g, "[credential]");
+}
+
+function telemetryNumber(value, min, max) {
+  const result = Number(value);
+  return isFinite(result) && result >= min && result <= max ? result : 0;
+}
+
+function consumeTelemetryQuota(e) {
+  const key = e.remoteIP();
+  const now = Date.now();
+  const current = telemetryRateLimits[key];
+  const expired = !current || now - current.startedAt >= 60 * 1000;
+  const next = expired ? { startedAt: now, count: 1 } : { startedAt: current.startedAt, count: current.count + 1 };
+  telemetryRateLimits[key] = next;
+  if (next.count > 120) throw new ApiError(429, "För många diagnostikhändelser.");
+}
+
+function telemetry(body) {
+  const event = telemetryText(body.event, 64);
+  const sessionId = telemetryText(body.sessionId, 64);
+  if (!allowedTelemetryEvents.includes(event)) throw new BadRequestError("Ogiltig diagnostikhändelse.");
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(sessionId)) throw new BadRequestError("Ogiltig diagnostiksession.");
+  return {
+    event: event,
+    sessionId: sessionId,
+    sequence: telemetryNumber(body.sequence, 1, 1000000),
+    appVersion: telemetryDiagnostic(body.appVersion, 32),
+    buildNumber: telemetryDiagnostic(body.buildNumber, 32),
+    platform: telemetryDiagnostic(body.platform, 24),
+    osVersion: telemetryDiagnostic(body.osVersion, 48),
+    deviceModel: telemetryDiagnostic(body.deviceModel, 80),
+    stage: telemetryDiagnostic(body.stage, 48),
+    status: telemetryNumber(body.status, 100, 599),
+    errorCode: telemetryDiagnostic(body.errorCode, 80),
+    errorMessage: telemetryDiagnostic(body.errorMessage, 240),
+    durationMs: telemetryNumber(body.durationMs, 0, 300000),
+    reachable: body.reachable === true,
+  };
+}
+
 function body(e) {
   return e.requestInfo().body || {};
 }
@@ -216,6 +293,8 @@ module.exports = {
   location,
   event,
   publicRecord,
+  consumeTelemetryQuota,
+  telemetry,
   consumeExtractionQuota,
   transcribe,
   extractIntent,

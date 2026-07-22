@@ -2,6 +2,7 @@ import type { RecordModel } from 'pocketbase';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
 import { pocketbase, pocketbaseAuthReady } from '@/lib/pocketbase';
+import { diagnosticError, reportTelemetry } from '@/lib/telemetry';
 
 import { authenticateWithApple } from './apple-sign-in';
 
@@ -40,7 +41,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (client.authStore.isValid) {
           try {
             await client.collection('users').authRefresh();
-          } catch {
+          } catch (error) {
+            void reportTelemetry('auth_refresh_failed', {
+              stage: 'startup',
+              ...diagnosticError(error),
+            });
             client.authStore.clear();
           }
         }
@@ -68,7 +73,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       loading,
       signIn: async (email, password) => {
         if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
-        await pocketbase.collection('users').authWithPassword(email, password);
+        try {
+          await pocketbase.collection('users').authWithPassword(email, password);
+        } catch (error) {
+          void reportTelemetry('auth_password_failed', {
+            stage: 'exchange',
+            ...diagnosticError(error),
+          });
+          throw error;
+        }
       },
       signInWithApple: async () => {
         if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
@@ -76,11 +89,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       signUp: async (email, password) => {
         if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
-        const auth = await pocketbase.send<{ token: string; record: RecordModel }>('/api/iceage/signup', {
-          method: 'POST',
-          body: { email, password },
-        });
-        pocketbase.authStore.save(auth.token, auth.record);
+        try {
+          const auth = await pocketbase.send<{ token: string; record: RecordModel }>('/api/iceage/signup', {
+            method: 'POST',
+            body: { email, password },
+          });
+          pocketbase.authStore.save(auth.token, auth.record);
+        } catch (error) {
+          void reportTelemetry('auth_signup_failed', {
+            stage: 'create',
+            ...diagnosticError(error),
+          });
+          throw error;
+        }
       },
       signOut: async () => {
         if (!pocketbase) return;
