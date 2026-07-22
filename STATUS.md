@@ -8,9 +8,8 @@ baseline is published through PR #1 under the MIT license.
 ## Current work
 
 - Public repository: `https://github.com/Magnus-Gille/fryslagerappen`
-- The former repository is retained privately as
-  `Magnus-Gille/fryslagerappen-private-archive` so its old PR metadata is not
-  exposed.
+- Historical repositories and PR metadata are retained in private archives
+  rather than exposed through the public repository.
 - Expo SDK 57 / React Native / TypeScript scaffold is installed and verified.
 - PRD, development guide, CI, Dependabot, and the epic roadmap with eight
   user-testing sessions are included in PR #1.
