@@ -75,14 +75,36 @@ function number(value, label, min, max) {
 
 function household(e) {
   const householdId = e.auth.getString("household");
-  if (!householdId) throw new ForbiddenError("Kontot tillhör inget hushåll.");
+  if (!householdId) throw new ForbiddenError("Kontot tillhör inget hem.");
   return householdId;
+}
+
+function requireHome(e, homeId) {
+  const currentHomeId = household(e);
+  if (homeId !== currentHomeId) throw new ForbiddenError("Hemmet är inte tillgängligt.");
+  return currentHomeId;
+}
+
+function requireHomeOwner(e, homeId) {
+  const currentHomeId = requireHome(e, homeId);
+  if (e.auth.getString("householdRole") !== "owner") {
+    throw new ForbiddenError("Endast hemmets ägare kan ändra inställningarna.");
+  }
+  return currentHomeId;
+}
+
+function storageType(value) {
+  const result = String(value || "");
+  if (!["freezer", "fridge", "dry"].includes(result)) {
+    throw new BadRequestError("Ogiltig typ av förvaringsplats.");
+  }
+  return result;
 }
 
 function location(app, locationId, householdId) {
   const record = app.findRecordById(collections.locations, locationId);
   if (record.getString("household") !== householdId || record.getString("archivedAt")) {
-    throw new BadRequestError("Förvaringsplatsen finns inte i hushållet.");
+    throw new BadRequestError("Förvaringsplatsen finns inte i hemmet.");
   }
   return record;
 }
@@ -188,6 +210,9 @@ module.exports = {
   date,
   number,
   household,
+  requireHome,
+  requireHomeOwner,
+  storageType,
   location,
   event,
   publicRecord,

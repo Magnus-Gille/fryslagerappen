@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-import { useHousehold } from '@/features/household/household-provider';
+import { useHome } from '@/features/home/home-provider';
 import { pocketbase } from '@/lib/pocketbase';
 
 import { captureIntentSchema, type CaptureIntent } from './capture-intent';
@@ -8,7 +8,7 @@ import { captureIntentSchema, type CaptureIntent } from './capture-intent';
 export type CapturePhoto = { base64: string; mimeType: 'image/jpeg'; uri: string };
 
 export async function extractInventoryIntent(input: {
-  householdId: string;
+  homeId: string;
   photo?: CapturePhoto;
   audioUri?: string;
 }): Promise<CaptureIntent> {
@@ -17,7 +17,7 @@ export async function extractInventoryIntent(input: {
     const result = await pocketbase.send<{ intent: unknown }>('/api/iceage/extract', {
       method: 'POST',
       body: {
-        householdId: input.householdId,
+        homeId: input.homeId,
         photoBase64: input.photo?.base64,
         photoMimeType: input.photo?.mimeType,
       },
@@ -25,7 +25,7 @@ export async function extractInventoryIntent(input: {
     return captureIntentSchema.parse(result.intent);
   }
   const body = new FormData();
-  body.append('householdId', input.householdId);
+  body.append('homeId', input.homeId);
   if (input.photo) {
     body.append('photoBase64', input.photo.base64);
     body.append('photoMimeType', input.photo.mimeType);
@@ -47,6 +47,6 @@ export async function extractInventoryIntent(input: {
   return captureIntentSchema.parse(result.intent);
 }
 
-export function useCaptureHouseholdId() {
-  return useHousehold().household?.id;
+export function useCaptureHomeId() {
+  return useHome().home?.id;
 }

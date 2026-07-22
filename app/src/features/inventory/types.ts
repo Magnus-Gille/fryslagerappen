@@ -1,10 +1,13 @@
 export type ItemStatus = 'active' | 'consumed' | 'discarded';
 export type DateSource = 'manual' | 'label' | 'estimated' | 'none';
 
-export type FreezerLocation = {
+export type StorageType = 'freezer' | 'fridge' | 'dry';
+
+export type StoragePlace = {
   id: string;
   name: string;
   description: string;
+  storageType: StorageType;
 };
 
 export type FreezerItem = {
@@ -41,7 +44,7 @@ export type InventoryEvent = {
 };
 
 export type InventoryState = {
-  locations: FreezerLocation[];
+  locations: StoragePlace[];
   items: FreezerItem[];
   events: InventoryEvent[];
 };
@@ -66,4 +69,9 @@ export type InventoryAction =
   | { type: 'quantityRemoved'; itemId: string; quantity: number }
   | { type: 'itemMoved'; itemId: string; locationId: string }
   | { type: 'itemConsumed'; itemId: string }
-  | { type: 'itemRestored'; itemId: string };
+  | { type: 'itemRestored'; itemId: string }
+  | { type: 'locationAdded'; payload: StoragePlace }
+  | { type: 'locationUpdated'; locationId: string; payload: Omit<StoragePlace, 'id'> }
+  | { type: 'locationArchived'; locationId: string };
+
+export type StoragePlaceInput = Omit<StoragePlace, 'id'>;

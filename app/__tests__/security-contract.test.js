@@ -43,9 +43,18 @@ describe('M5 backend security contract', () => {
 
   it('keeps writes behind authenticated custom routes and owner-only invitations', () => {
     expect(hooks).toContain('$apis.requireAuth("users")');
-    expect(hooks).toContain('e.auth.getString("householdRole") !== "owner"');
+    expect(helpers).toContain('e.auth.getString("householdRole") !== "owner"');
     expect(hooks).toContain('item.getInt("version") !== expectedVersion');
     expect(hooks).toContain('new ApiError(409');
+  });
+
+  it('models owner-configured homes, typed storage places, and members', () => {
+    expect(hooks).toContain('"/api/iceage/homes"');
+    expect(hooks).toContain('"/api/iceage/homes/{id}/members"');
+    expect(hooks).toContain('"/api/iceage/homes/{id}/locations"');
+    expect(hooks).toContain('"/api/iceage/homes/{id}/locations/{locationId}"');
+    expect(hooks).toContain('lib.requireHomeOwner');
+    expect(hooks).toContain('storageType');
   });
 
   it('keeps captures ephemeral, size-limited, and locally routed', () => {

@@ -18,6 +18,7 @@ import { findLocationId, toAddItemInput, type CaptureIntent } from '@/features/c
 import { useTheme } from '@/hooks/use-theme';
 
 import { useInventory } from './inventory-provider';
+import { storagePlaceLabel } from './storage-place';
 import type { AddItemInput } from './types';
 
 type CaptureMode = 'photo' | 'voice' | 'manual';
@@ -27,7 +28,7 @@ type Props = {
   onClose: () => void;
 };
 
-const categories = ['Torrvaror', 'Konserver', 'Frukt & bär', 'Lagad mat', 'Fisk', 'Glass & dessert'];
+const categories = ['Torrvaror', 'Konserver', 'Mejeri', 'Frukt & bär', 'Lagad mat', 'Fisk', 'Glass & dessert'];
 
 const manualSuggestion: Omit<AddItemInput, 'locationId'> = {
   name: '',
@@ -228,7 +229,7 @@ export function AddItemModal({ visible, onClose }: Props) {
                   {state.locations.map((location) => (
                     <ChoiceChip
                       key={location.id}
-                      label={location.name}
+                      label={storagePlaceLabel(location)}
                       selected={form.locationId === location.id}
                       onPress={() => update('locationId', location.id)}
                     />

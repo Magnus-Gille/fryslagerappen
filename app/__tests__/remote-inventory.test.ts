@@ -31,7 +31,17 @@ describe('remote inventory mapping', () => {
 
   it('maps a location row', () => {
     expect(
-      locationFromRow({ id: 'location-1', name: 'Hyllan i ateljén', description: 'Torrvaror' }),
-    ).toEqual({ id: 'location-1', name: 'Hyllan i ateljén', description: 'Torrvaror' });
+      locationFromRow({
+        id: 'location-1',
+        name: 'Hyllan i ateljén',
+        description: 'Torrvaror',
+        storageType: 'dry',
+      }),
+    ).toEqual({
+      id: 'location-1',
+      name: 'Hyllan i ateljén',
+      description: 'Torrvaror',
+      storageType: 'dry',
+    });
   });
 });

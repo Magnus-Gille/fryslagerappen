@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 import { useAuth } from '@/features/auth/auth-provider';
-import { useHousehold } from '@/features/household/household-provider';
+import { useHome } from '@/features/home/home-provider';
 import { pocketbase } from '@/lib/pocketbase';
 
 import {
@@ -22,7 +22,7 @@ import {
   selectEatSoonItems,
 } from './inventory-state';
 import { eventFromRow, type EventRow, itemFromRow, type ItemRow, locationFromRow, type LocationRow } from './remote-inventory';
-import type { AddItemInput, InventoryState } from './types';
+import type { AddItemInput, InventoryState, StoragePlaceInput } from './types';
 
 type InventoryContextValue = {
   state: InventoryState;
@@ -36,22 +36,25 @@ type InventoryContextValue = {
   moveItem: (itemId: string, locationId: string) => Promise<void>;
   consumeItem: (itemId: string) => Promise<void>;
   restoreItem: (itemId: string) => Promise<void>;
+  createStoragePlace: (input: StoragePlaceInput) => Promise<void>;
+  updateStoragePlace: (locationId: string, input: StoragePlaceInput) => Promise<void>;
+  archiveStoragePlace: (locationId: string) => Promise<void>;
 };
 
 const InventoryContext = createContext<InventoryContextValue | null>(null);
 
 export function InventoryProvider({ children }: PropsWithChildren) {
   const { user } = useAuth();
-  const { household } = useHousehold();
+  const { home } = useHome();
   const [state, dispatch] = useReducer(inventoryReducer, undefined, createInventoryState);
   const latestLoad = useRef(0);
-  const isRemote = Boolean(pocketbase && user && household);
+  const isRemote = Boolean(pocketbase && user && home);
   const [syncStatus, setSyncStatus] = useState<InventoryContextValue['syncStatus']>(
     isRemote ? 'loading' : 'local',
   );
 
   const loadRemote = useCallback(async () => {
-    if (!pocketbase || !household) return;
+    if (!pocketbase || !home) return;
     const loadNumber = ++latestLoad.current;
     const [locations, items, events] = await Promise.all([
       pocketbase.collection('locations').getFullList({ filter: 'archivedAt = ""', sort: 'position' }),
@@ -68,10 +71,10 @@ export function InventoryProvider({ children }: PropsWithChildren) {
       },
     });
     setSyncStatus('synced');
-  }, [household]);
+  }, [home]);
 
   useEffect(() => {
-    if (!isRemote || !household || !pocketbase) return;
+    if (!isRemote || !home || !pocketbase) return;
     let active = true;
     void loadRemote().catch(() => active && setSyncStatus('error'));
     const subscriptions = Promise.all([
@@ -84,7 +87,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
       active = false;
       void subscriptions.then((unsubscribe) => unsubscribe.forEach((stop) => void stop()));
     };
-  }, [household, isRemote, loadRemote]);
+  }, [home, isRemote, loadRemote]);
 
   const runRemote = useCallback(
     async (optimisticAction: Parameters<typeof inventoryReducer>[1], operation: () => Promise<unknown>) => {
@@ -119,7 +122,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
       archivedItems: selectArchivedItems(state),
       syncStatus,
       addItem: async (payload) => {
-        if (!isRemote || !pocketbase || !household || !user) {
+        if (!isRemote || !pocketbase || !home || !user) {
           dispatch({ type: 'itemAdded', payload });
           return;
         }
@@ -176,8 +179,47 @@ export function InventoryProvider({ children }: PropsWithChildren) {
           () => mutate(itemId, { action: 'restore', expectedVersion: item.version }),
         );
       },
+      createStoragePlace: async (input) => {
+        if (!isRemote || !pocketbase || !home) {
+          dispatch({
+            type: 'locationAdded',
+            payload: { id: `location-${Date.now()}`, ...input },
+          });
+          return;
+        }
+        await pocketbase.send(`/api/iceage/homes/${home.id}/locations`, {
+          method: 'POST',
+          body: input,
+        });
+        await loadRemote();
+      },
+      updateStoragePlace: async (locationId, input) => {
+        if (!isRemote || !pocketbase || !home) {
+          dispatch({ type: 'locationUpdated', locationId, payload: input });
+          return;
+        }
+        await pocketbase.send(`/api/iceage/homes/${home.id}/locations/${locationId}`, {
+          method: 'PATCH',
+          body: input,
+        });
+        await loadRemote();
+      },
+      archiveStoragePlace: async (locationId) => {
+        if (state.locations.length <= 1) throw new Error('Hemmet måste ha minst en aktiv förvaringsplats.');
+        if (state.items.some((item) => item.locationId === locationId && item.status === 'active')) {
+          throw new Error('Flytta eller förbruka varorna på platsen först.');
+        }
+        if (!isRemote || !pocketbase || !home) {
+          dispatch({ type: 'locationArchived', locationId });
+          return;
+        }
+        await pocketbase.send(`/api/iceage/homes/${home.id}/locations/${locationId}`, {
+          method: 'DELETE',
+        });
+        await loadRemote();
+      },
     }),
-    [household, isRemote, loadRemote, mutate, runRemote, state, syncStatus, user],
+    [home, isRemote, loadRemote, mutate, runRemote, state, syncStatus, user],
   );
 
   return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>;

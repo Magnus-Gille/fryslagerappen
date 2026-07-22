@@ -8,14 +8,15 @@ import {
 } from '../src/features/inventory/inventory-state';
 
 describe('inventory state', () => {
-  it('starts with freezer and dry-storage locations on both floors', () => {
+  it('starts with typed freezer, fridge, and dry-storage places', () => {
     const state = createInventoryState();
 
-    expect(state.locations.map((location) => location.name)).toEqual([
-      'Frysen på övervåningen',
-      'Frysen i källaren',
-      'Hyllan på övervåningen',
-      'Hyllan i ateljén',
+    expect(state.locations.map(({ name, storageType }) => ({ name, storageType }))).toEqual([
+      { name: 'Frysen på övervåningen', storageType: 'freezer' },
+      { name: 'Frysen i källaren', storageType: 'freezer' },
+      { name: 'Kylskåpet på övervåningen', storageType: 'fridge' },
+      { name: 'Hyllan på övervåningen', storageType: 'dry' },
+      { name: 'Hyllan i ateljén', storageType: 'dry' },
     ]);
     expect(state.items).toContainEqual(
       expect.objectContaining({
@@ -24,6 +25,37 @@ describe('inventory state', () => {
         locationId: 'studio-shelf',
       }),
     );
+  });
+
+  it('adds, edits, and archives configurable storage places locally', () => {
+    const initial = createInventoryState();
+    const added = inventoryReducer(initial, {
+      type: 'locationAdded',
+      payload: {
+        id: 'garage-fridge',
+        name: 'Extrakylen i garaget',
+        description: 'Dryck',
+        storageType: 'fridge',
+      },
+    });
+    expect(added.locations.at(-1)).toMatchObject({
+      id: 'garage-fridge',
+      name: 'Extrakylen i garaget',
+      storageType: 'fridge',
+    });
+
+    const edited = inventoryReducer(added, {
+      type: 'locationUpdated',
+      locationId: 'garage-fridge',
+      payload: { name: 'Dryckeskylen', description: 'Garage', storageType: 'fridge' },
+    });
+    expect(edited.locations.at(-1)?.name).toBe('Dryckeskylen');
+
+    const archived = inventoryReducer(edited, {
+      type: 'locationArchived',
+      locationId: 'garage-fridge',
+    });
+    expect(archived.locations).not.toContainEqual(expect.objectContaining({ id: 'garage-fridge' }));
   });
 
   it('searches active items across names and categories', () => {

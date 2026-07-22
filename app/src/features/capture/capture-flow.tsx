@@ -8,26 +8,26 @@ import { useTheme } from '@/hooks/use-theme';
 
 import { CameraCapture } from './camera-capture';
 import type { CaptureIntent } from './capture-intent';
-import { extractInventoryIntent, type CapturePhoto, useCaptureHouseholdId } from './capture-service';
+import { extractInventoryIntent, type CapturePhoto, useCaptureHomeId } from './capture-service';
 import { VoiceRecorder } from './voice-recorder';
 
 export function CaptureFlow({ mode, onComplete }: { mode: 'photo' | 'voice'; onComplete: (intent: CaptureIntent) => void }) {
   const theme = useTheme();
-  const householdId = useCaptureHouseholdId();
+  const homeId = useCaptureHomeId();
   const [photo, setPhoto] = useState<CapturePhoto>();
   const [wantVoice, setWantVoice] = useState(mode === 'voice');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
   async function analyze(audioUri?: string) {
-    if (!householdId) {
-      setError('Riktig foto- och rösttolkning kräver ett inloggat hushåll.');
+    if (!homeId) {
+      setError('Riktig foto- och rösttolkning kräver ett inloggat hem.');
       return;
     }
     setBusy(true);
     setError(undefined);
     try {
-      const intent = await extractInventoryIntent({ householdId, photo, audioUri });
+      const intent = await extractInventoryIntent({ homeId, photo, audioUri });
       onComplete(intent);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Tolkningen misslyckades. Försök igen.');

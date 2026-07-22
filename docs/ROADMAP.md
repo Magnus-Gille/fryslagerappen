@@ -97,7 +97,7 @@ innan backend byggs.
 - Startsida med sökning, "Ät snart" och tydlig Lägg till-knapp.
 - Foto-/röstsimulerad registrering med bekräftelsevy.
 - Snabbåtgärderna Ta ut en, Ändra mängd och Förbrukad.
-- Fyra platser: två frysar och två torrhyllor på övervåningen, i källaren och i ateljén.
+- Ett hem med fem startplatser: två frysar, två torrhyllor och ett kylskåp; ägaren kan lägga till, ändra och arkivera valfritt många platser av varje typ.
 
 **Användningstest 2 — Modererat prototyptest**
 
@@ -119,7 +119,7 @@ innan backend byggs.
 
 **Omfattning**
 
-- SQLite-modell för hushåll, platser, lagerposter och händelser.
+- SQLite-modell för hem, medlemmar, typade platser, lagerposter och händelser.
 - Skapa, läsa, ändra, flytta, minska, förbruka och återställa poster.
 - Lokal sökning och filter per plats/kategori/status.
 - Seed-/demodata och migreringsstrategi.
@@ -160,14 +160,15 @@ innan backend byggs.
 - Båda behovsägarna föredrar flödet framför en handskriven digital lista.
 - Fel och osäkerheter är synliga innan de påverkar lagret.
 
-## Epic 5 — Delat hushåll och synk
+## Epic 5 — Delat hem och synk
 
 **Mål:** två personer ska kunna lita på samma lager utan tyst dataförlust.
 
 **Omfattning**
 
-- Självhostad PocketBase på M5 med auth, hushållsregler och realtid.
-- Skapa hushåll och säker inbjudan till en medlem.
+- Självhostad PocketBase på M5 med auth, hembehörighet och realtid.
+- Skapa och namnge hem, säker inbjudan, medlemslista och ägarstyrd borttagning.
+- Ägarstyrda, typade förvaringsplatser för frys, kyl och torrförråd.
 - Delta-synk mellan SQLite och backend.
 - Realtime-uppdatering, retry och konflikthantering.
 - Synlig senast-synkad-status och ändringshistorik.

@@ -1,7 +1,7 @@
 # M5 backend
 
 Fryslagerappen uses a self-hosted PocketBase instance on the M5 for email and
-password authentication, household authorization, inventory storage, and
+password authentication, Home membership and authorization, inventory storage, and
 realtime updates. PocketBase is an open-source binary; app users do not need a
 PocketBase account.
 
@@ -14,7 +14,7 @@ worker without changing the app.
 ## Layout
 
 - `pb_migrations/`: versioned schema and collection authorization rules
-- `pb_hooks/`: authenticated household, inventory, invitation, and extraction
+- `pb_hooks/`: authenticated Home, member, storage-place, inventory, invitation, and extraction
   routes
 - `systemd/`: hardened user service for the M5
 - `VERSION`: pinned PocketBase release used by validation and deployment
@@ -22,6 +22,10 @@ worker without changing the app.
 The service listens only on `127.0.0.1:8090`. Tailscale Serve terminates HTTPS
 and makes it available only inside Magnus's tailnet. Tailscale Funnel must not
 be enabled for this service.
+
+The public API uses `Home` terminology. PocketBase collection and relation
+names retain the original `household` wording as an internal compatibility
+detail so existing installations can migrate without rewriting identifiers.
 
 ## Validate locally
 

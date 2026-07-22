@@ -49,6 +49,13 @@ cp "$repo_root/scripts/backend-test-migrations/1784737000_verify_storage_upgrade
   --migrationsDir "$upgrade_migrations" \
   --hooksDir "$repo_root/backend/pb_hooks" \
   --automigrate=false >/dev/null
+cp "$repo_root/backend/pb_migrations/1784740000_model_homes_and_storage_types.js" "$upgrade_migrations/"
+cp "$repo_root/scripts/backend-test-migrations/1784741000_verify_home_model.js" "$upgrade_migrations/"
+"$pocketbase_bin" migrate up \
+  --dir "$test_root/upgrade-data" \
+  --migrationsDir "$upgrade_migrations" \
+  --hooksDir "$repo_root/backend/pb_hooks" \
+  --automigrate=false >/dev/null
 
 ICEAGE_FAKE_INFERENCE_PORT="$inference_port" \
   node "$repo_root/scripts/fake-inference-server.mjs" >"$test_root/inference.log" 2>&1 &
@@ -113,18 +120,38 @@ signup() {
 
 owner="$(signup 'owner@example.invalid')"
 owner_token="$(printf '%s' "$owner" | jq -r .token)"
-household="$(curl -fsS -X POST "$base_url/api/iceage/households" \
+household="$(curl -fsS -X POST "$base_url/api/iceage/homes" \
   -H "authorization: Bearer $owner_token" \
   -H 'content-type: application/json' \
   --data '{"name":"Testhushåll","displayName":"Owner"}')"
-household_id="$(printf '%s' "$household" | jq -r .householdId)"
+household_id="$(printf '%s' "$household" | jq -r .homeId)"
 owner_token="$(curl -fsS -X POST "$base_url/api/collections/users/auth-refresh" \
   -H "authorization: Bearer $owner_token" | jq -r .token)"
 locations="$(curl -fsS "$base_url/api/collections/locations/records?sort=position" \
   -H "authorization: Bearer $owner_token")"
-test "$(printf '%s' "$locations" | jq -r .totalItems)" = '4'
-test "$(printf '%s' "$locations" | jq -c '[.items[].name]')" = '["Frysen på övervåningen","Frysen i källaren","Hyllan på övervåningen","Hyllan i ateljén"]'
+test "$(printf '%s' "$locations" | jq -r .totalItems)" = '5'
+test "$(printf '%s' "$locations" | jq -c '[.items[] | {name,storageType}]')" = '[{"name":"Frysen på övervåningen","storageType":"freezer"},{"name":"Frysen i källaren","storageType":"freezer"},{"name":"Hyllan på övervåningen","storageType":"dry"},{"name":"Hyllan i ateljén","storageType":"dry"},{"name":"Kylskåpet på övervåningen","storageType":"fridge"}]'
 location_id="$(printf '%s' "$locations" | jq -r .items[0].id)"
+
+renamed_home="$(curl -fsS -X PATCH "$base_url/api/iceage/homes/$household_id" \
+  -H "authorization: Bearer $owner_token" \
+  -H 'content-type: application/json' \
+  --data '{"name":"Vårt hem"}')"
+test "$(printf '%s' "$renamed_home" | jq -r .home.name)" = 'Vårt hem'
+
+configured_location="$(curl -fsS -X POST "$base_url/api/iceage/homes/$household_id/locations" \
+  -H "authorization: Bearer $owner_token" \
+  -H 'content-type: application/json' \
+  --data '{"name":"Extrakylen i garaget","description":"Dryck","storageType":"fridge"}' | jq -c .location)"
+configured_location_id="$(printf '%s' "$configured_location" | jq -r .id)"
+test "$(printf '%s' "$configured_location" | jq -r .storageType)" = 'fridge'
+updated_location="$(curl -fsS -X PATCH "$base_url/api/iceage/homes/$household_id/locations/$configured_location_id" \
+  -H "authorization: Bearer $owner_token" \
+  -H 'content-type: application/json' \
+  --data '{"name":"Dryckeskylen","description":"Garage","storageType":"fridge"}')"
+test "$(printf '%s' "$updated_location" | jq -r .location.name)" = 'Dryckeskylen'
+test "$(curl -fsS -X DELETE "$base_url/api/iceage/homes/$household_id/locations/$configured_location_id" \
+  -H "authorization: Bearer $owner_token" | jq -r .archived)" = 'true'
 
 item_payload="$(jq -cn --arg location "$location_id" \
   '{name:"Testpåse",category:"Lagad mat",quantity:2,unit:"påsar",locationId:$location,dateSource:"none"}')"
@@ -133,6 +160,10 @@ item="$(curl -fsS -X POST "$base_url/api/iceage/items" \
   -H 'content-type: application/json' \
   --data "$item_payload" | jq -c .item)"
 item_id="$(printf '%s' "$item" | jq -r .id)"
+occupied_archive_status="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
+  "$base_url/api/iceage/homes/$household_id/locations/$location_id" \
+  -H "authorization: Bearer $owner_token")"
+test "$occupied_archive_status" = '400'
 
 for collection in households locations items inventory_events household_invitations extraction_quotas; do
   direct_create_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
@@ -169,7 +200,7 @@ test "$conflict_status" = '409'
 
 member="$(signup 'member@example.invalid')"
 member_token="$(printf '%s' "$member" | jq -r .token)"
-invite="$(curl -fsS -X POST "$base_url/api/iceage/households/$household_id/invites" \
+invite="$(curl -fsS -X POST "$base_url/api/iceage/homes/$household_id/invites" \
   -H "authorization: Bearer $owner_token" \
   -H 'content-type: application/json' \
   --data '{}' | jq -r .token)"
@@ -182,12 +213,29 @@ member_token="$(curl -fsS -X POST "$base_url/api/collections/users/auth-refresh"
 member_items="$(curl -fsS "$base_url/api/collections/items/records" \
   -H "authorization: Bearer $member_token" | jq -r .totalItems)"
 test "$member_items" = '1'
+member_id="$(printf '%s' "$member" | jq -r .record.id)"
+members="$(curl -fsS "$base_url/api/iceage/homes/$household_id/members" \
+  -H "authorization: Bearer $member_token")"
+test "$(printf '%s' "$members" | jq -r '.members | length')" = '2'
+test "$(printf '%s' "$members" | jq -c '[.members[].role] | sort')" = '["member","owner"]'
 member_invite_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
-  "$base_url/api/iceage/households/$household_id/invites" \
+  "$base_url/api/iceage/homes/$household_id/invites" \
   -H "authorization: Bearer $member_token" \
   -H 'content-type: application/json' \
   --data '{}')"
 test "$member_invite_status" = '403'
+member_location_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/homes/$household_id/locations" \
+  -H "authorization: Bearer $member_token" \
+  -H 'content-type: application/json' \
+  --data '{"name":"Otillåten plats","storageType":"dry"}')"
+test "$member_location_status" = '403'
+member_rename_status="$(curl -sS -o /dev/null -w '%{http_code}' -X PATCH \
+  "$base_url/api/iceage/homes/$household_id" \
+  -H "authorization: Bearer $member_token" \
+  -H 'content-type: application/json' \
+  --data '{"name":"Kapad"}')"
+test "$member_rename_status" = '403'
 
 outsider="$(signup 'outsider@example.invalid')"
 outsider_token="$(printf '%s' "$outsider" | jq -r .token)"
@@ -199,20 +247,20 @@ empty_extract_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
   "$base_url/api/iceage/extract" \
   -H "authorization: Bearer $owner_token" \
   -H 'content-type: application/json' \
-  --data "{\"householdId\":\"$household_id\"}")"
+  --data "{\"homeId\":\"$household_id\"}")"
 test "$empty_extract_status" = '400'
 wrong_household_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
   "$base_url/api/iceage/extract" \
   -H "authorization: Bearer $owner_token" \
   -H 'content-type: application/json' \
-  --data '{"householdId":"different-household","photoBase64":"aGVq","photoMimeType":"image/png"}')"
+  --data '{"homeId":"different-home","photoBase64":"aGVq","photoMimeType":"image/png"}')"
 test "$wrong_household_status" = '403'
-photo_payload="$(jq -cn --arg household "$household_id" \
-  '{householdId:$household,photoBase64:"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",photoMimeType:"image/png"}')"
+photo_payload="$(jq -cn --arg home "$household_id" \
+  '{homeId:$home,photoBase64:"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",photoMimeType:"image/png"}')"
 printf 'synthetic audio bytes' >"$test_root/voice.aiff"
 voice_transcript="$(curl -fsS -X POST "$base_url/api/iceage/extract" \
   -H "authorization: Bearer $owner_token" \
-  -F "householdId=$household_id" \
+  -F "homeId=$household_id" \
   -F "audio=@$test_root/voice.aiff;type=audio/aiff" | jq -r .intent.transcript)"
 test "$voice_transcript" = 'Jag tar ut en testpåse.'
 for _ in $(seq 1 59); do
@@ -241,7 +289,17 @@ delete_status="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
   -H "authorization: Bearer $owner_token")"
 test "$delete_status" = '403'
 
+test "$(curl -fsS -X DELETE "$base_url/api/iceage/homes/$household_id/members/$member_id" \
+  -H "authorization: Bearer $owner_token" | jq -r .removed)" = 'true'
+removed_member_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+  "$base_url/api/iceage/homes/$household_id/members" \
+  -H "authorization: Bearer $member_token")"
+test "$removed_member_status" = '403'
+remaining_members="$(curl -fsS "$base_url/api/iceage/homes/$household_id/members" \
+  -H "authorization: Bearer $owner_token" | jq -r '.members | length')"
+test "$remaining_members" = '1'
+
 event_count="$(curl -fsS "$base_url/api/collections/inventory_events/records" \
   -H "authorization: Bearer $owner_token" | jq -r .totalItems)"
 test "$event_count" = '2'
-printf 'backend=ok legacyUpgrade=4 locations=4 itemVersion=2 conflict=409 memberItems=1 memberInvite=403 outsiderItems=0 directWrites=403 photoVoiceExtraction=ok quota=429 userWrites=403 events=2\n'
+printf 'backend=ok homeModel=5 configurableLocations=ok members=ok legacyUpgrade=ok itemVersion=2 conflict=409 memberItems=1 memberInvite=403 outsiderItems=0 directWrites=403 photoVoiceExtraction=ok quota=429 userWrites=403 events=2\n'
