@@ -13,6 +13,7 @@
       "icon": "./assets/images/fryslagerappen-icon.png",
       "supportsTablet": false,
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Fryslagerappen använder kameran för att fotografera mat och etiketter.",
         "NSMicrophoneUsageDescription": "Fryslagerappen använder mikrofonen när du beskriver det som läggs i frysen.",
         "NSPhotoLibraryUsageDescription": "Fryslagerappen kan välja ett befintligt foto av mat eller etikett."

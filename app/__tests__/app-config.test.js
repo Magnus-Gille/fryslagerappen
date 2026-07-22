@@ -29,6 +29,10 @@ describe('Expo app configuration', () => {
     );
   });
 
+  it('declares that the app does not use non-exempt encryption', () => {
+    expect(config.expo.ios.infoPlist.ITSAppUsesNonExemptEncryption).toBe(false);
+  });
+
   it('uses the branded icon on the splash screen', () => {
     const splashPlugin = config.expo.plugins.find(
       (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-splash-screen',
@@ -49,6 +53,16 @@ describe('Expo app configuration', () => {
       expect(resolveConfig({ config: config.expo }).experiments.baseUrl).toBe('/fryslagerappen');
     } finally {
       delete process.env.EXPO_WEB_BASE_URL;
+    }
+  });
+
+  it('allows a monotonically increasing iOS build number for TestFlight', () => {
+    process.env.EXPO_IOS_BUILD_NUMBER = '260723005501';
+
+    try {
+      expect(resolveConfig({ config: config.expo }).ios.buildNumber).toBe('260723005501');
+    } finally {
+      delete process.env.EXPO_IOS_BUILD_NUMBER;
     }
   });
 });

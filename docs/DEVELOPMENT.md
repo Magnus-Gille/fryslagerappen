@@ -145,6 +145,14 @@ npx eas-cli build --profile development --platform ios
 `eas.json` definierar development, preview och production. Ingen build får
 använda produktionsdata under användningstestning.
 
+För den privata familjepiloten byggs och laddas en signerad release upp direkt
+med Xcode. Se [TestFlight-anvisningen](./TESTFLIGHT.md). Skriptet ger varje
+uppladdning ett tidsbaserat, stigande buildnummer:
+
+```bash
+./scripts/upload-testflight.sh
+```
+
 ## Dataskydd i utveckling
 
 - Råa användarintervjuer, foton och ljud ska inte versionshanteras.
