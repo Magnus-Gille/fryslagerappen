@@ -9,6 +9,9 @@ import { HomeScreen } from '@/features/home/home-screen';
 import { InventoryProvider } from '@/features/inventory/inventory-provider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { runtimeConfig } from '@/lib/runtime-config';
+import { startPhoneTelemetry } from '@/lib/telemetry';
+
+startPhoneTelemetry();
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();

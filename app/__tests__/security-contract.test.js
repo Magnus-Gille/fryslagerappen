@@ -86,4 +86,23 @@ describe('M5 backend security contract', () => {
     expect(hooks).toContain('ICEAGE_APPLE_CLIENT_SECRET');
     expect(hooks).not.toMatch(/ICEAGE_APPLE_CLIENT_SECRET\s*=\s*["'][^"']+["']/);
   });
+
+  it('accepts only bounded, sanitized pre-login phone telemetry', () => {
+    expect(hooks).toContain('"/api/iceage/telemetry"');
+    expect(hooks).toContain('$apis.bodyLimit(8 * 1024)');
+    expect(helpers).toContain('allowedTelemetryEvents');
+    expect(hooks).toContain('$app.logger().info("client.telemetry"');
+    expect(hooks).not.toContain('JSON.stringify(body)');
+    expect(hooks).not.toContain('authorizationCode');
+    for (const event of [
+      'auth_apple_failed',
+      'home_load_failed',
+      'inventory_load_failed',
+      'inventory_realtime_failed',
+      'inventory_mutation_failed',
+      'capture_extraction_failed',
+    ]) {
+      expect(helpers).toContain(`"${event}"`);
+    }
+  });
 });

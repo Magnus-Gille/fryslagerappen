@@ -120,6 +120,47 @@ admin_auth="$(curl -fsS -X POST "$base_url/api/collections/_superusers/auth-with
   -H 'content-type: application/json' \
   --data "{\"identity\":\"test-admin@example.invalid\",\"password\":\"$test_admin_password\"}")"
 admin_token="$(printf '%s' "$admin_auth" | jq -r .token)"
+telemetry_status="$(curl -sS -o "$test_root/telemetry-response.json" -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/telemetry" \
+  -H 'content-type: application/json' \
+  --data '{"event":"auth_apple_failed","sessionId":"backend-test-session","sequence":7,"appVersion":"1.0.0","platform":"ios","stage":"exchange","status":400,"errorMessage":"Failed for test@example.invalid Bearer secret-token","email":"must-not-be-logged@example.invalid","authorizationCode":"must-not-be-logged"}')"
+if [[ "$telemetry_status" != '202' ]]; then
+  cat "$test_root/telemetry-response.json" >&2
+  tail -50 "$test_root/server.log" >&2
+  exit 1
+fi
+invalid_telemetry_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/telemetry" \
+  -H 'content-type: application/json' \
+  --data '{"event":"arbitrary_event","sessionId":"backend-test-session"}')"
+test "$invalid_telemetry_status" = '400'
+telemetry_log=''
+for _ in $(seq 1 50); do
+  telemetry_logs="$(curl -fsS --get "$base_url/api/logs" \
+    -H "authorization: Bearer $admin_token" \
+    --data-urlencode 'filter=message="client.telemetry"' \
+    --data-urlencode 'perPage=50')"
+  telemetry_log="$(printf '%s' "$telemetry_logs" | jq -c '.items[] | select(.data.sessionId == "backend-test-session")' | head -n 1)"
+  if [[ -n "$telemetry_log" ]]; then break; fi
+  sleep 0.1
+done
+test "$(printf '%s' "$telemetry_log" | jq -r .data.event)" = 'auth_apple_failed'
+test "$(printf '%s' "$telemetry_log" | jq -r .data.errorMessage)" = 'Failed for [email] [credential]'
+test "$(printf '%s' "$telemetry_log" | jq -r '.data.email // ""')" = ''
+test "$(printf '%s' "$telemetry_log" | jq -r '.data.authorizationCode // ""')" = ''
+for sequence in $(seq 3 120); do
+  telemetry_loop_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+    "$base_url/api/iceage/telemetry" \
+    -H 'content-type: application/json' \
+    --data "{\"event\":\"app_started\",\"sessionId\":\"backend-rate-session\",\"sequence\":$sequence}")"
+  test "$telemetry_loop_status" = '202'
+done
+telemetry_quota_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/telemetry" \
+  -H 'content-type: application/json' \
+  --data '{"event":"app_started","sessionId":"backend-rate-session","sequence":121}')"
+test "$telemetry_quota_status" = '429'
+
 users_collection="$(curl -fsS "$base_url/api/collections/users" \
   -H "authorization: Bearer $admin_token")"
 test "$(printf '%s' "$users_collection" | jq -r .createRule)" = '@request.context = "oauth2" && @request.auth.id = ""'
@@ -330,4 +371,4 @@ test "$remaining_members" = '1'
 event_count="$(curl -fsS "$base_url/api/collections/inventory_events/records" \
   -H "authorization: Bearer $owner_token" | jq -r .totalItems)"
 test "$event_count" = '2'
-printf 'backend=ok homeModel=5 configurableLocations=ok members=ok legacyUpgrade=ok itemVersion=2 conflict=409 memberItems=1 memberInvite=403 outsiderItems=0 directWrites=403 photoVoiceExtraction=ok quota=429 userWrites=403 events=2\n'
+printf 'backend=ok telemetry=sanitized homeModel=5 configurableLocations=ok members=ok legacyUpgrade=ok itemVersion=2 conflict=409 memberItems=1 memberInvite=403 outsiderItems=0 directWrites=403 photoVoiceExtraction=ok quota=429 userWrites=403 events=2\n'
