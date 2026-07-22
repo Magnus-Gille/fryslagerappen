@@ -1,29 +1,55 @@
-import type { FreezerItem, FreezerLocation } from './types';
+import type { FreezerItem, StoragePlace } from './types';
 
-export const seedLocations: FreezerLocation[] = [
+export const seedLocations: StoragePlace[] = [
   {
     id: 'upstairs',
     name: 'Frysen på övervåningen',
     description: 'Övervåningen · 3 lådor',
+    storageType: 'freezer',
   },
   {
     id: 'downstairs',
     name: 'Frysen i källaren',
     description: 'Källaren · stor box',
+    storageType: 'freezer',
+  },
+  {
+    id: 'upstairs-fridge',
+    name: 'Kylskåpet på övervåningen',
+    description: 'Kylda varor på övervåningen',
+    storageType: 'fridge',
   },
   {
     id: 'upstairs-shelf',
     name: 'Hyllan på övervåningen',
     description: 'Torrvaror på övervåningen',
+    storageType: 'dry',
   },
   {
     id: 'studio-shelf',
     name: 'Hyllan i ateljén',
     description: 'Torrvaror i ateljén',
+    storageType: 'dry',
   },
 ];
 
 export const seedItems: FreezerItem[] = [
+  {
+    id: 'item-butter',
+    name: 'Smör',
+    category: 'Mejeri',
+    quantity: 1,
+    unit: 'paket',
+    locationId: 'upstairs-fridge',
+    eatBefore: '2026-10-15',
+    dateSource: 'label',
+    status: 'active',
+    createdAt: '2026-07-22T10:00:00.000Z',
+    updatedAt: '2026-07-22T10:00:00.000Z',
+    version: 1,
+    color: '#F1D791',
+    emoji: '🧈',
+  },
   {
     id: 'item-pasta',
     name: 'Pasta',

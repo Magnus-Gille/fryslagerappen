@@ -1,6 +1,6 @@
 # PRD: Fryslagerappen
 
-- **Status:** Utkast v0.2
+- **Status:** Utkast v0.3
 - **Datum:** 2026-07-22
 - **Produktnamn:** Arbetsnamn *Fryslagerappen*
 - **Primär plattform:** iPhone
@@ -9,14 +9,15 @@
 
 ## 1. Sammanfattning
 
-Fryslagerappen ska ge ett hushåll en gemensam, aktuell och lättillgänglig bild av vad som finns i hemmets frysar och torrförråd. Den ska särskilt lösa problemet med egenlagad, egenplockad och lagrad mat — till exempel sylt, mos, bär, grytor, pasta och konserver — som annars blir bortglömd, samt hjälpa familjen att undvika onödiga inköp av varor som redan finns hemma.
+Fryslagerappen ska ge ett hem en gemensam, aktuell och lättillgänglig bild av vad som finns i hemmets kylskåp, frysar och torrförråd. Den ska särskilt lösa problemet med egenlagad, egenplockad och lagrad mat — till exempel sylt, mos, bär, grytor, pasta, mejeri och konserver — som annars blir bortglömd, samt hjälpa familjen att undvika onödiga inköp av varor som redan finns hemma.
 
 Produktens viktigaste egenskap är inte maximal registreringsprecision utan **extremt låg arbetsinsats**. Om varje förändring kräver mycket skrivande kommer registret inte att hållas aktuellt. Därför ska ett föremål kunna registreras med foto och/eller svensk talinmatning, med AI-stöd för att föreslå namn, kategori, datum, placering och hållbarhet. Användaren ska i normalfallet bara behöva kontrollera förslaget och bekräfta.
 
 MVP:n ska stödja:
 
-- fyra namngivna förvaringsplatser: ”Frysen på övervåningen”, ”Frysen i källaren”, ”Hyllan på övervåningen” och ”Hyllan i ateljén”;
-- ett delat hushåll med minst två iPhone-användare;
+- ett namngivet hem med en eller flera medlemmar och en ägare;
+- valfritt många konfigurerbara förvaringsplatser av typen frys, kyl eller torrförråd;
+- fem startplatser: ”Frysen på övervåningen”, ”Frysen i källaren”, ”Hyllan på övervåningen”, ”Hyllan i ateljén” och ”Kylskåpet på övervåningen”;
 - snabb registrering med foto, röst eller en kombination av båda;
 - ett sökbart lager som fungerar hemma och i butiken;
 - hantering av mängd, lagringsdatum och bäst före-/ät-snart-information;
@@ -50,7 +51,7 @@ En mobil, delad inventering med foto- och röstinmatning kan göra det lika enke
 
 ### 3.1 Produktmål
 
-- Ge hushållet en tillförlitlig överblick över frysarnas och torrförrådens innehåll och placering.
+- Ge hemmet en tillförlitlig överblick över kylskåpens, frysarnas och torrförrådens innehåll och placering.
 - Göra registrering av en ny vara till en handling som normalt tar högst 10–15 sekunder.
 - Göra det möjligt att svara på ”Har vi X hemma?” på några sekunder.
 - Hjälpa användarna att prioritera mat som bör ätas snart.
@@ -60,7 +61,6 @@ En mobil, delad inventering med foto- och röstinmatning kan göra det lika enke
 ### 3.2 Icke-mål för MVP
 
 - Fullständigt inköps-, recept- eller måltidsplaneringssystem.
-- Hantering av kylskåp eller andra lagerplatser utöver de definierade frysarna och torrhyllorna.
 - Automatisk fysisk identifiering via streckkodsläsare, vågar, RFID eller sensorer.
 - Exakt livsmedelssäkerhetsbedömning eller garanti att en vara är säker att äta.
 - Integration med matbutiker, kassakvitton eller leveranstjänster.
@@ -103,8 +103,9 @@ Behöver kunna markera en vara som förbrukad eller minska mängden med ett tryc
 
 ### 6.1 Must have — MVP
 
-- Skapa eller ansluta till ett delat hushåll.
-- Skapa och namnge flera förvaringsplatser för frys- och torrvaror.
+- Skapa eller ansluta till ett delat hem.
+- Som ägare skapa, namnge, typa och arkivera flera förvaringsplatser för kyl-, frys- och torrvaror.
+- Som ägare bjuda in och ta bort medlemmar; som medlem se vilka som delar hemmet.
 - Registrera vara med foto, tal eller manuell text.
 - Svensk taligenkänning.
 - Bildtolkning/OCR för etikett, produktnamn och synliga datum.
@@ -137,11 +138,11 @@ Behöver kunna markera en vara som förbrukad eller minska mängden med ett tryc
 
 ## 7. Viktigaste användarflöden
 
-### 7.1 Första start och hushåll
+### 7.1 Första start och hem
 
-1. Första användaren skapar ett hushåll.
-2. Appen skapar fyra platser: ”Frysen på övervåningen”, ”Frysen i källaren”, ”Hyllan på övervåningen” och ”Hyllan i ateljén”.
-3. Användaren bjuder in en annan hushållsmedlem via systemets delningsfunktion eller länk.
+1. Första användaren skapar ett namngivet hem och blir dess ägare.
+2. Appen skapar fem typade startplatser: två frysar, två torrhyllor och ett kylskåp.
+3. Ägaren kan ändra platserna och bjuda in en annan medlem via systemets delningsfunktion eller länk.
 4. Den inbjudna användaren accepterar och ser samma lager.
 5. Båda kan lägga till, ändra och ta bort varor.
 
@@ -196,19 +197,21 @@ Detta flöde är viktigt när kameran är opraktisk eller när varan redan har e
 
 ## 8. Funktionella krav
 
-### FR-1: Hushåll och behörighet
+### FR-1: Hem, medlemmar och behörighet
 
-- En användare ska kunna skapa ett hushåll och bjuda in minst en annan person.
-- Alla fullvärdiga hushållsmedlemmar ska kunna läsa och ändra lagret.
+- En användare ska kunna skapa ett hem; ett hem ska ha en eller flera medlemmar.
+- Hemmets ägare ska kunna byta namn på hemmet, bjuda in personer och ta bort andra medlemmar.
+- Alla fullvärdiga medlemmar ska kunna läsa och ändra lagret.
 - Det ska framgå vem som senast ändrade en post och när.
 - En borttagen medlem ska förlora åtkomst till framtida data.
 
 ### FR-2: Förvaringsplatser
 
-- Hushållet ska kunna använda namngivna frys- och torrförvaringsplatser.
+- Hemmets ägare ska kunna konfigurera flera namngivna platser av varje typ: frys, kyl och torrförråd.
 - Varje aktiv lagerpost ska tillhöra exakt en plats.
 - En vara ska kunna flyttas mellan platser utan att skapas på nytt.
 - Sökresultat ska kunna filtreras per plats.
+- En plats med aktiva varor får inte arkiveras förrän varorna har flyttats eller avslutats.
 
 ### FR-3: Registrering
 
@@ -274,9 +277,9 @@ Detta flöde är viktigt när kameran är opraktisk eller när varan redan har e
 
 ## 9. Informationsmodell
 
-### 9.1 Hushåll
+### 9.1 Hem
 
-- `household_id`
+- `home_id`
 - namn
 - medlemmar och roller
 - skapad tid
@@ -285,16 +288,17 @@ Detta flöde är viktigt när kameran är opraktisk eller när varan redan har e
 ### 9.2 Förvaringsplats
 
 - `location_id`
-- `household_id`
+- `home_id`
 - namn
 - valfri beskrivning
+- typ: frys, kyl eller torrförråd
 - aktiv/arkiverad
 - sorteringsordning
 
 ### 9.3 Lagerpost
 
 - `item_id`
-- `household_id`
+- `home_id`
 - `location_id`
 - namn
 - kategori
@@ -388,7 +392,7 @@ Måttet speglar produktens mål, men kräver att användarna faktiskt markerar f
 
 ### 12.2 Aktiveringsmått
 
-- Hushållet har de fyra skapade standardplatserna för frys- och torrvaror.
+- Hemmet har fem typade startplatser och ägaren kan konfigurera fler.
 - Minst två användare har anslutit.
 - Minst fem varor har registrerats.
 - Minst en användare har genomfört en sökning efter registrering.
@@ -416,7 +420,7 @@ Måttet speglar produktens mål, men kräver att användarna faktiskt markerar f
 
 MVP:n är produktmässigt godkänd när följande scenario fungerar från början till slut:
 
-1. Hushållsmedlem A skapar hushållet och får de fyra standardplatserna för frys- och torrvaror.
+1. Medlem A skapar hemmet och får fem typade startplatser för kyl-, frys- och torrvaror.
 2. Hushållsmedlem B ansluter från sin iPhone och ser samma tomma lager.
 3. Hushållsmedlem B fotograferar en etikett, säger ”Två paket pasta på hyllan i ateljén” och får ett rimligt strukturerat förslag.
 4. Hushållsmedlem B kan tydligt se och rätta osäkra datum innan posten sparas.

@@ -26,7 +26,7 @@ export function AuthScreen() {
       if (mode === 'signin') await signIn(email.trim(), password);
       else {
         await signUp(email.trim(), password);
-        setMessage('Kontot är skapat. Skapa ett hushåll eller anslut med en inbjudningskod.');
+        setMessage('Kontot är skapat. Skapa ett hem eller anslut med en inbjudningskod.');
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Inloggningen misslyckades.');
@@ -41,8 +41,8 @@ export function AuthScreen() {
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.heading}>
             <ThemedText type="smallBold" style={{ color: theme.primary }}>FRYSLAGERAPPEN</ThemedText>
-            <ThemedText type="title">Ett lager för hela hushållet</ThemedText>
-            <ThemedText themeColor="textSecondary">Logga in för att synka hushållets lager säkert mellan era telefoner.</ThemedText>
+            <ThemedText type="title">Ett lager för hela hemmet</ThemedText>
+            <ThemedText themeColor="textSecondary">Logga in för att synka hemmets lager säkert mellan era telefoner.</ThemedText>
           </View>
           <TextInput
             accessibilityLabel="E-postadress"

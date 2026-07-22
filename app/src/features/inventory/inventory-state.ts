@@ -44,6 +44,9 @@ function itemVisual(category: string) {
   if (category === 'Konserver') {
     return { color: '#C7A27A', emoji: '🥫' };
   }
+  if (category === 'Mejeri') {
+    return { color: '#E9DFC4', emoji: '🧈' };
+  }
   return { color: '#8DB8A4', emoji: '🥘' };
 }
 
@@ -123,6 +126,20 @@ export function inventoryReducer(state: InventoryState, action: InventoryAction)
         status: 'active',
         quantity: Math.max(1, item.quantity),
       }));
+    case 'locationAdded':
+      return { ...state, locations: [...state.locations, action.payload] };
+    case 'locationUpdated':
+      return {
+        ...state,
+        locations: state.locations.map((location) =>
+          location.id === action.locationId ? { id: location.id, ...action.payload } : location,
+        ),
+      };
+    case 'locationArchived':
+      return {
+        ...state,
+        locations: state.locations.filter((location) => location.id !== action.locationId),
+      };
     default:
       return state;
   }

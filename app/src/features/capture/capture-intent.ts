@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { AddItemInput, FreezerLocation } from '@/features/inventory/types';
+import type { AddItemInput, StoragePlace } from '@/features/inventory/types';
 
 export const captureIntentSchema = z.object({
   action: z.enum(['add', 'remove', 'consume', 'move']),
@@ -25,7 +25,7 @@ function normalize(value: string) {
   return value.trim().toLocaleLowerCase('sv-SE');
 }
 
-export function findLocationId(locationName: string | null, locations: FreezerLocation[]) {
+export function findLocationId(locationName: string | null, locations: StoragePlace[]) {
   if (!locationName) return undefined;
   const wanted = normalize(locationName);
   return (
@@ -36,11 +36,11 @@ export function findLocationId(locationName: string | null, locations: FreezerLo
   );
 }
 
-export function matchLocationId(locationName: string | null, locations: FreezerLocation[]) {
+export function matchLocationId(locationName: string | null, locations: StoragePlace[]) {
   return findLocationId(locationName, locations) ?? locations[0]?.id;
 }
 
-export function toAddItemInput(intent: CaptureIntent, locations: FreezerLocation[]): AddItemInput {
+export function toAddItemInput(intent: CaptureIntent, locations: StoragePlace[]): AddItemInput {
   const locationId = matchLocationId(intent.locationName, locations);
   if (!locationId) {
     throw new Error('Hushållet saknar en aktiv förvaringsplats.');

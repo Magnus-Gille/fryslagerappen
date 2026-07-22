@@ -21,8 +21,8 @@ describe('capture intent', () => {
 
     expect(
       toAddItemInput(intent, [
-        { id: 'upstairs', name: 'Frysen på övervåningen', description: '' },
-        { id: 'studio-shelf', name: 'Hyllan i ateljén', description: '' },
+        { id: 'upstairs', name: 'Frysen på övervåningen', description: '', storageType: 'freezer' },
+        { id: 'studio-shelf', name: 'Hyllan i ateljén', description: '', storageType: 'dry' },
       ]),
     ).toMatchObject({
       name: 'Blåbärssylt',
@@ -60,15 +60,15 @@ describe('capture intent', () => {
     });
 
     expect(
-      toAddItemInput(intent, [{ id: 'upstairs', name: 'Frysen på övervåningen', description: '' }]).locationId,
+      toAddItemInput(intent, [{ id: 'upstairs', name: 'Frysen på övervåningen', description: '', storageType: 'freezer' }]).locationId,
     ).toBe('upstairs');
   });
 
   it('does not silently resolve an unknown move destination', () => {
     expect(
       findLocationId('Skafferiet', [
-        { id: 'upstairs', name: 'Frysen på övervåningen', description: '' },
-        { id: 'downstairs', name: 'Frysen i källaren', description: '' },
+        { id: 'upstairs', name: 'Frysen på övervåningen', description: '', storageType: 'freezer' },
+        { id: 'downstairs', name: 'Frysen i källaren', description: '', storageType: 'freezer' },
       ]),
     ).toBeUndefined();
   });

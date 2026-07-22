@@ -21,65 +21,174 @@ routerAdd("POST", "/api/iceage/signup", (e) => {
   return $apis.recordAuthResponse(e, user, "password");
 }, $apis.requireGuestOnly(), $apis.bodyLimit(16 * 1024));
 
-routerAdd("POST", "/api/iceage/households", (e) => {
+function createHome(e) {
   const lib = require(__hooks + "/lib/iceage.js");
-  if (e.auth.getString("household")) throw new BadRequestError("Kontot tillhör redan ett hushåll.");
+  if (e.auth.getString("household")) throw new BadRequestError("Kontot tillhör redan ett hem.");
   const body = lib.body(e);
-  const name = lib.text(body.name, "hushållsnamn", 80);
+  const name = lib.text(body.name, "hemmets namn", 80);
   const displayName = lib.text(body.displayName, "namn", 80);
-  let householdId = "";
+  let homeId = "";
 
   e.app.runInTransaction((txApp) => {
-    const household = new Record(txApp.findCollectionByNameOrId(lib.collections.households));
-    household.set("name", name);
-    household.set("owner", e.auth.id);
-    txApp.save(household);
-    householdId = household.id;
+    const home = new Record(txApp.findCollectionByNameOrId(lib.collections.households));
+    home.set("name", name);
+    home.set("owner", e.auth.id);
+    txApp.save(home);
+    homeId = home.id;
 
     for (const locationData of [
-      { name: "Frysen på övervåningen", description: "Övervåningen", position: 0 },
-      { name: "Frysen i källaren", description: "Källaren", position: 1 },
-      { name: "Hyllan på övervåningen", description: "Torrvaror på övervåningen", position: 2 },
-      { name: "Hyllan i ateljén", description: "Torrvaror i ateljén", position: 3 },
+      { name: "Frysen på övervåningen", description: "Övervåningen", storageType: "freezer", position: 0 },
+      { name: "Frysen i källaren", description: "Källaren", storageType: "freezer", position: 1 },
+      { name: "Hyllan på övervåningen", description: "Torrvaror på övervåningen", storageType: "dry", position: 2 },
+      { name: "Hyllan i ateljén", description: "Torrvaror i ateljén", storageType: "dry", position: 3 },
+      { name: "Kylskåpet på övervåningen", description: "Kylda varor på övervåningen", storageType: "fridge", position: 4 },
     ]) {
       const location = new Record(txApp.findCollectionByNameOrId(lib.collections.locations));
-      location.set("household", household.id);
+      location.set("household", home.id);
       location.set("name", locationData.name);
       location.set("description", locationData.description);
+      location.set("storageType", locationData.storageType);
       location.set("position", locationData.position);
       txApp.save(location);
     }
 
     const user = txApp.findRecordById(lib.collections.users, e.auth.id);
-    user.set("household", household.id);
+    user.set("household", home.id);
     user.set("householdRole", "owner");
     user.set("displayName", displayName);
     txApp.save(user);
   });
 
-  return e.json(200, { householdId: householdId });
+  return e.json(200, { homeId: homeId, householdId: homeId });
+}
+
+routerAdd("POST", "/api/iceage/homes", createHome, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
+routerAdd("POST", "/api/iceage/households", createHome, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
+
+routerAdd("PATCH", "/api/iceage/homes/{id}", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const homeId = lib.requireHomeOwner(e, e.request.pathValue("id"));
+  const home = e.app.findRecordById(lib.collections.households, homeId);
+  home.set("name", lib.text(lib.body(e).name, "hemmets namn", 80));
+  e.app.save(home);
+  return e.json(200, { home: lib.publicRecord(home) });
 }, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
 
-routerAdd("POST", "/api/iceage/households/{id}/invites", (e) => {
+routerAdd("GET", "/api/iceage/homes/{id}/members", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
-  const householdId = lib.household(e);
-  if (e.request.pathValue("id") !== householdId || e.auth.getString("householdRole") !== "owner") {
-    throw new ForbiddenError("Endast hushållets ägare kan bjuda in.");
+  const homeId = lib.requireHome(e, e.request.pathValue("id"));
+  const members = e.app.findRecordsByFilter(
+    lib.collections.users,
+    "household = {:home}",
+    "displayName",
+    100,
+    0,
+    { home: homeId },
+  );
+  return e.json(200, {
+    members: members.map((member) => ({
+      id: member.id,
+      displayName: member.getString("displayName"),
+      role: member.getString("householdRole"),
+    })),
+  });
+}, $apis.requireAuth("users"));
+
+routerAdd("DELETE", "/api/iceage/homes/{id}/members/{memberId}", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const homeId = lib.requireHomeOwner(e, e.request.pathValue("id"));
+  const member = e.app.findRecordById(lib.collections.users, e.request.pathValue("memberId"));
+  if (member.getString("household") !== homeId) throw new ForbiddenError();
+  if (member.getString("householdRole") === "owner") {
+    throw new BadRequestError("Hemmets ägare kan inte tas bort.");
   }
+  member.set("household", "");
+  member.set("householdRole", "");
+  e.app.save(member);
+  return e.json(200, { removed: true });
+}, $apis.requireAuth("users"));
+
+routerAdd("POST", "/api/iceage/homes/{id}/locations", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const homeId = lib.requireHomeOwner(e, e.request.pathValue("id"));
+  const body = lib.body(e);
+  const existing = e.app.findRecordsByFilter(
+    lib.collections.locations,
+    "household = {:home}",
+    "-position",
+    1,
+    0,
+    { home: homeId },
+  );
+  const location = new Record(e.app.findCollectionByNameOrId(lib.collections.locations));
+  location.set("household", homeId);
+  location.set("name", lib.text(body.name, "platsens namn", 80));
+  location.set("description", lib.optionalText(body.description, 200));
+  location.set("storageType", lib.storageType(body.storageType));
+  location.set("position", existing.length ? existing[0].getInt("position") + 1 : 0);
+  e.app.save(location);
+  return e.json(201, { location: lib.publicRecord(location) });
+}, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
+
+routerAdd("PATCH", "/api/iceage/homes/{id}/locations/{locationId}", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const homeId = lib.requireHomeOwner(e, e.request.pathValue("id"));
+  const location = lib.location(e.app, e.request.pathValue("locationId"), homeId);
+  const body = lib.body(e);
+  location.set("name", lib.text(body.name, "platsens namn", 80));
+  location.set("description", lib.optionalText(body.description, 200));
+  location.set("storageType", lib.storageType(body.storageType));
+  e.app.save(location);
+  return e.json(200, { location: lib.publicRecord(location) });
+}, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
+
+routerAdd("DELETE", "/api/iceage/homes/{id}/locations/{locationId}", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const homeId = lib.requireHomeOwner(e, e.request.pathValue("id"));
+  const location = lib.location(e.app, e.request.pathValue("locationId"), homeId);
+  const activeLocations = e.app.findRecordsByFilter(
+    lib.collections.locations,
+    "household = {:home} && archivedAt = ''",
+    "",
+    2,
+    0,
+    { home: homeId },
+  );
+  if (activeLocations.length <= 1) throw new BadRequestError("Hemmet måste ha minst en aktiv förvaringsplats.");
+  const activeItems = e.app.findRecordsByFilter(
+    lib.collections.items,
+    "location = {:location} && status = 'active'",
+    "",
+    1,
+    0,
+    { location: location.id },
+  );
+  if (activeItems.length) throw new BadRequestError("Flytta eller förbruka varorna på platsen först.");
+  location.set("archivedAt", new Date().toISOString());
+  e.app.save(location);
+  return e.json(200, { archived: true });
+}, $apis.requireAuth("users"));
+
+function createHomeInvite(e) {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const homeId = lib.requireHomeOwner(e, e.request.pathValue("id"));
 
   const token = $security.randomString(32);
   const invitation = new Record(e.app.findCollectionByNameOrId(lib.collections.invitations));
-  invitation.set("household", householdId);
+  invitation.set("household", homeId);
   invitation.set("tokenHash", $security.sha256(token));
   invitation.set("invitedBy", e.auth.id);
   invitation.set("expiresAt", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
   e.app.save(invitation);
   return e.json(200, { token: token });
-}, $apis.requireAuth("users"), $apis.bodyLimit(8 * 1024));
+}
+
+routerAdd("POST", "/api/iceage/homes/{id}/invites", createHomeInvite, $apis.requireAuth("users"), $apis.bodyLimit(8 * 1024));
+routerAdd("POST", "/api/iceage/households/{id}/invites", createHomeInvite, $apis.requireAuth("users"), $apis.bodyLimit(8 * 1024));
 
 routerAdd("POST", "/api/iceage/invites/accept", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
-  if (e.auth.getString("household")) throw new BadRequestError("Kontot tillhör redan ett hushåll.");
+  if (e.auth.getString("household")) throw new BadRequestError("Kontot tillhör redan ett hem.");
   const body = lib.body(e);
   const token = lib.text(body.token, "inbjudningskod", 128);
   const displayName = lib.text(body.displayName, "namn", 80);
@@ -192,7 +301,7 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
   const householdId = lib.household(e);
   const body = lib.body(e);
-  if (String(body.householdId || "") !== householdId) throw new ForbiddenError();
+  if (String(body.homeId || body.householdId || "") !== householdId) throw new ForbiddenError();
 
   const photoBase64 = String(body.photoBase64 || "");
   const photoMimeType = String(body.photoMimeType || "image/jpeg");
@@ -213,7 +322,9 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
   const items = e.app.findRecordsByFilter(lib.collections.items, "household = {:household} && status = 'active'", "-updated", 200, 0, { household: householdId });
   const context = [
     "Datum: " + new Date().toISOString().slice(0, 10) + ".",
-    "Förvaringsplatser: " + locations.map((location) => location.getString("name")).join(", ") + ".",
+    "Förvaringsplatser: " + locations.map((location) => (
+      location.getString("name") + " [" + location.getString("storageType") + "]"
+    )).join(", ") + ".",
     "Aktivt lager: " + JSON.stringify(items.map((item) => ({
       name: item.getString("name"),
       quantity: item.getFloat("quantity"),

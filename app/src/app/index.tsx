@@ -5,9 +5,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ThemedText } from '@/components/themed-text';
 import { AddItemModal } from '@/features/inventory/add-item-modal';
 import { InventoryCard } from '@/features/inventory/inventory-card';
-import { HouseholdMenu } from '@/features/household/household-menu';
+import { HomeMenu } from '@/features/home/home-menu';
 import { selectActiveItems } from '@/features/inventory/inventory-state';
 import { useInventory } from '@/features/inventory/inventory-provider';
+import { MoveItemModal } from '@/features/inventory/move-item-modal';
+import { storagePlaceLabel } from '@/features/inventory/storage-place';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -18,16 +20,16 @@ export default function HomeScreen() {
   const [query, setQuery] = useState('');
   const [locationId, setLocationId] = useState<string | undefined>();
   const [showAdd, setShowAdd] = useState(false);
-  const [showHousehold, setShowHousehold] = useState(false);
+  const [showHome, setShowHome] = useState(false);
+  const [movingItemId, setMovingItemId] = useState<string>();
+  const activeLocationId = state.locations.some((location) => location.id === locationId)
+    ? locationId
+    : undefined;
 
   const visibleItems = useMemo(
-    () => selectActiveItems(state, query, locationId),
-    [locationId, query, state],
+    () => selectActiveItems(state, query, activeLocationId),
+    [activeLocationId, query, state],
   );
-
-  function otherLocation(currentLocationId: string) {
-    return state.locations.find((location) => location.id !== currentLocationId)?.id ?? currentLocationId;
-  }
 
   const bottomPadding = Math.max(insets.bottom, Spacing.three) + BottomTabInset + 88;
 
@@ -41,7 +43,7 @@ export default function HomeScreen() {
           <View style={styles.header}>
             <View style={styles.headerCopy}>
               <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                MITT HUSHÅLL
+                MITT HEM
               </ThemedText>
               <ThemedText type="title">Vad finns hemma?</ThemedText>
               <View style={styles.syncRow}>
@@ -57,7 +59,7 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Öppna hushållsinställningar" onPress={() => setShowHousehold(true)} style={[styles.avatar, { backgroundColor: theme.primaryStrong }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Öppna heminställningar" onPress={() => setShowHome(true)} style={[styles.avatar, { backgroundColor: theme.primaryStrong }]}>
               <ThemedText type="smallBold" style={styles.avatarText}>
                 F
               </ThemedText>
@@ -81,18 +83,18 @@ export default function HomeScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterRow}>
-            <FilterChip label="Alla" selected={!locationId} onPress={() => setLocationId(undefined)} />
+            <FilterChip label="Alla" selected={!activeLocationId} onPress={() => setLocationId(undefined)} />
             {state.locations.map((location) => (
               <FilterChip
                 key={location.id}
-                label={location.name}
-                selected={locationId === location.id}
+                label={storagePlaceLabel(location)}
+                selected={activeLocationId === location.id}
                 onPress={() => setLocationId(location.id)}
               />
             ))}
           </ScrollView>
 
-          {!query && !locationId && eatSoonItems.length > 0 && (
+          {!query && !activeLocationId && eatSoonItems.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeading}>
                 <View>
@@ -125,7 +127,7 @@ export default function HomeScreen() {
                         {item.name}
                       </ThemedText>
                       <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-                        {item.quantity} {item.unit} · {location.name}
+                        {item.quantity} {item.unit} · {storagePlaceLabel(location)}
                       </ThemedText>
                       <ThemedText type="caption" style={{ color: theme.warningText }}>
                         {item.dateSource === 'estimated' ? 'Uppskattat' : 'Registrerat'} {item.eatBefore}
@@ -165,7 +167,7 @@ export default function HomeScreen() {
                       item={item}
                       location={location}
                       onTakeOne={() => takeOne(item.id)}
-                      onMove={() => moveItem(item.id, otherLocation(item.locationId))}
+                      onMove={() => setMovingItemId(item.id)}
                       onConsume={() => consumeItem(item.id)}
                     />
                   );
@@ -201,7 +203,14 @@ export default function HomeScreen() {
       </View>
 
       <AddItemModal visible={showAdd} onClose={() => setShowAdd(false)} />
-      <HouseholdMenu visible={showHousehold} onClose={() => setShowHousehold(false)} />
+      <MoveItemModal
+        visible={Boolean(movingItemId)}
+        item={state.items.find((item) => item.id === movingItemId)}
+        locations={state.locations}
+        onClose={() => setMovingItemId(undefined)}
+        onMove={(destinationId) => movingItemId ? moveItem(movingItemId, destinationId) : Promise.resolve()}
+      />
+      <HomeMenu visible={showHome} onClose={() => setShowHome(false)} />
     </SafeAreaView>
   );
 }

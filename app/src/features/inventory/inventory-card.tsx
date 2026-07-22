@@ -4,11 +4,12 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-import type { FreezerItem, FreezerLocation } from './types';
+import { storagePlaceLabel } from './storage-place';
+import type { FreezerItem, StoragePlace } from './types';
 
 type Props = {
   item: FreezerItem;
-  location: FreezerLocation;
+  location: StoragePlace;
   onTakeOne: () => void;
   onMove: () => void;
   onConsume: () => void;
@@ -45,7 +46,7 @@ export function InventoryCard({ item, location, onTakeOne, onMove, onConsume }: 
               {item.name}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              {item.quantity} {item.unit} · {location.name}
+              {item.quantity} {item.unit} · {storagePlaceLabel(location)}
             </ThemedText>
           </View>
           {date && (

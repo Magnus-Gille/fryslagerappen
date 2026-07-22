@@ -1,9 +1,10 @@
-import type { FreezerItem, FreezerLocation, InventoryEvent } from './types';
+import type { FreezerItem, InventoryEvent, StoragePlace, StorageType } from './types';
 
 export type LocationRow = {
   id: string;
   name: string;
   description: string | null;
+  storageType: StorageType;
 };
 
 export type ItemRow = {
@@ -46,11 +47,19 @@ export function itemVisual(category: string) {
   if (category === 'Konserver') {
     return { color: '#C7A27A', emoji: '🥫' };
   }
+  if (category === 'Mejeri') {
+    return { color: '#E9DFC4', emoji: '🧈' };
+  }
   return { color: '#8DB8A4', emoji: '🥘' };
 }
 
-export function locationFromRow(row: LocationRow): FreezerLocation {
-  return { id: row.id, name: row.name, description: row.description ?? '' };
+export function locationFromRow(row: LocationRow): StoragePlace {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? '',
+    storageType: row.storageType,
+  };
 }
 
 export function itemFromRow(row: ItemRow): FreezerItem {
