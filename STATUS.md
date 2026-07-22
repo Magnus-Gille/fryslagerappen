@@ -16,6 +16,8 @@ treated as the chosen direction.
 - Inventory behavior has focused reducer/selector tests.
 - Expo Doctor, lint, TypeScript, Jest, web export, and an iPhone 17 Pro native
   development build are green.
+- The static web prototype deploys from `main` to
+  `https://magnus-gille.github.io/fryslagerappen/` through GitHub Pages.
 - The add/search/consume/history/restore flow has been exercised in the iOS
   26.5 simulator with accessibility state inspected.
 

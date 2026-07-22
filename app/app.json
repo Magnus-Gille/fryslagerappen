@@ -67,6 +67,7 @@
       "expo-asset"
     ],
     "experiments": {
+      "baseUrl": "/fryslagerappen",
       "typedRoutes": true,
       "reactCompiler": true
     }

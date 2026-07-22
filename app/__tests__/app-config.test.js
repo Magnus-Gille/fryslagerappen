@@ -24,4 +24,9 @@ describe('Expo app configuration', () => {
       ]),
     );
   });
+
+  it('exports web routes beneath the public GitHub Pages repository path', () => {
+    expect(config.expo.web.output).toBe('static');
+    expect(config.expo.experiments.baseUrl).toBe('/fryslagerappen');
+  });
 });
