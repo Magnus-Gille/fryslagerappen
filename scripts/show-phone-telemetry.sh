@@ -31,9 +31,9 @@ printf '%s' "$logs" | jq -r '
   (.items[] | [
     .created,
     .data.event,
-    (.data.stage // "-"),
-    ((.data.status // "-") | tostring),
-    (.data.errorMessage // "-"),
+    (if (.data.stage // "") == "" then "-" else .data.stage end),
+    (if (.data.status // 0) == 0 then "-" else (.data.status | tostring) end),
+    (if (.data.errorMessage // "") == "" then "-" else .data.errorMessage end),
     .data.sessionId
   ]) | @tsv
 '
