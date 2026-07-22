@@ -4,12 +4,12 @@
     "slug": "fryslagerappen",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/fryslagerappen-icon.png",
     "scheme": "fryslagerappen",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "ai.gille.fryslagerappen",
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/fryslagerappen-icon.png",
       "supportsTablet": false,
       "infoPlist": {
         "NSCameraUsageDescription": "Fryslagerappen använder kameran för att fotografera mat och etiketter.",
@@ -29,7 +29,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/fryslagerappen-icon.png"
     },
     "plugins": [
       "expo-router",
@@ -51,8 +51,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "image": "./assets/images/fryslagerappen-icon.png",
+          "imageWidth": 128
         }
       ],
       [
@@ -64,7 +64,8 @@
       "expo-notifications",
       "expo-sqlite",
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser"
     ],
     "experiments": {
       "baseUrl": "/fryslagerappen",
