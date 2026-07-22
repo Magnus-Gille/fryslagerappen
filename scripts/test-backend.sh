@@ -116,6 +116,28 @@ auth_methods="$(curl -fsS "$base_url/api/collections/users/auth-methods")"
 test "$(printf '%s' "$auth_methods" | jq -r '.oauth2.providers[] | select(.name == "apple") | .name')" = 'apple'
 test "$(printf '%s' "$auth_methods" | jq -r '.oauth2.providers[] | select(.name == "apple") | .codeVerifier')" = ''
 
+admin_auth="$(curl -fsS -X POST "$base_url/api/collections/_superusers/auth-with-password" \
+  -H 'content-type: application/json' \
+  --data "{\"identity\":\"test-admin@example.invalid\",\"password\":\"$test_admin_password\"}")"
+admin_token="$(printf '%s' "$admin_auth" | jq -r .token)"
+users_collection="$(curl -fsS "$base_url/api/collections/users" \
+  -H "authorization: Bearer $admin_token")"
+test "$(printf '%s' "$users_collection" | jq -r .createRule)" = '@request.context = "oauth2" && @request.auth.id = ""'
+direct_user_create_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/collections/users/records" \
+  -H 'content-type: application/json' \
+  --data '{"email":"bypass@example.invalid","password":"ValidDirectPassword123!","passwordConfirm":"ValidDirectPassword123!"}')"
+test "$direct_user_create_status" = '400'
+spoofed_oauth_context_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/collections/users/records?context=oauth2" \
+  -H 'x-context: oauth2' \
+  -H 'content-type: application/json' \
+  --data '{"email":"bypass@example.invalid","password":"ValidDirectPassword123!","passwordConfirm":"ValidDirectPassword123!","context":"oauth2"}')"
+test "$spoofed_oauth_context_status" = '400'
+direct_user_count="$(curl -fsS "$base_url/api/collections/users/records?filter=email%3D%22bypass%40example.invalid%22" \
+  -H "authorization: Bearer $admin_token" | jq -r .totalItems)"
+test "$direct_user_count" = '0'
+
 password="$(openssl rand -base64 24 | tr -d '\n')Aa1!"
 signup() {
   local email="$1"
