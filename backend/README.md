@@ -43,3 +43,20 @@ it against the release checksum, and run:
 Use `scripts/deploy-m5.sh` from the repository root for a versioned M5 deploy.
 It creates local-only backend secrets on first deploy and never copies them
 back to the laptop or repository.
+
+## Sign in with Apple
+
+Native iOS login uses Apple's system authorization sheet. The M5 exchanges the
+one-time authorization code and PocketBase validates Apple's signed identity
+token before creating or linking the user. Enable the App ID's Sign in with
+Apple capability, then add these values to `~/.config/iceage/backend.env` on the
+M5:
+
+```dotenv
+ICEAGE_APPLE_CLIENT_ID=ai.gille.fryslagerappen
+ICEAGE_APPLE_CLIENT_SECRET=<signed Apple client-secret JWT>
+```
+
+The secret is generated from a Sign in with Apple key and expires after at most
+six months. Renew it in the M5 environment and restart `iceage-pocketbase` before
+it expires. Never commit the key or generated secret.

@@ -23,6 +23,7 @@ const pagesWorkflow = fs.readFileSync(
   path.join(__dirname, '../../.github/workflows/deploy-pages.yml'),
   'utf8',
 );
+const appConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../app.json'), 'utf8'));
 
 describe('M5 backend security contract', () => {
   it('scopes every user-readable collection to the authenticated household', () => {
@@ -76,5 +77,13 @@ describe('M5 backend security contract', () => {
 
   it('does not publish the private tailnet endpoint in the public web bundle', () => {
     expect(pagesWorkflow).not.toContain('EXPO_PUBLIC_ICEAGE_API_URL');
+  });
+
+  it('enables the native Sign in with Apple capability without publishing credentials', () => {
+    expect(appConfig.expo.ios.usesAppleSignIn).toBe(true);
+    expect(appConfig.expo.plugins).toContain('expo-apple-authentication');
+    expect(hooks).toContain('ICEAGE_APPLE_CLIENT_ID');
+    expect(hooks).toContain('ICEAGE_APPLE_CLIENT_SECRET');
+    expect(hooks).not.toMatch(/ICEAGE_APPLE_CLIENT_SECRET\s*=\s*["'][^"']+["']/);
   });
 });

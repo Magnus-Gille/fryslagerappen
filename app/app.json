@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "ai.gille.fryslagerappen",
+      "usesAppleSignIn": true,
       "icon": "./assets/images/fryslagerappen-icon.png",
       "supportsTablet": false,
       "infoPlist": {
@@ -65,6 +66,7 @@
       "expo-sqlite",
       "expo-secure-store",
       "expo-asset",
+      "expo-apple-authentication",
       "expo-web-browser"
     ],
     "experiments": {

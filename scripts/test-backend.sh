@@ -90,6 +90,8 @@ test_admin_password="$(openssl rand -base64 24 | tr -d '\n')Aa1!"
 ICEAGE_WHISPER_URL="http://127.0.0.1:$inference_port/inference" \
 ICEAGE_LLM_BASE_URL="http://127.0.0.1:$inference_port/v1" \
 ICEAGE_EXTRACTION_MODEL='fake-inference' \
+ICEAGE_APPLE_CLIENT_ID='ai.gille.fryslagerappen' \
+ICEAGE_APPLE_CLIENT_SECRET='test-only-client-secret' \
   "$pocketbase_bin" serve \
   --http="127.0.0.1:$test_port" \
   --dir "$test_root/data" \
@@ -109,6 +111,10 @@ if ! curl -fsS "$base_url/api/iceage/health" >/dev/null; then
   tail -50 "$test_root/server.log" >&2
   exit 1
 fi
+
+auth_methods="$(curl -fsS "$base_url/api/collections/users/auth-methods")"
+test "$(printf '%s' "$auth_methods" | jq -r '.oauth2.providers[] | select(.name == "apple") | .name')" = 'apple'
+test "$(printf '%s' "$auth_methods" | jq -r '.oauth2.providers[] | select(.name == "apple") | .codeVerifier')" = ''
 
 password="$(openssl rand -base64 24 | tr -d '\n')Aa1!"
 signup() {

@@ -3,6 +3,8 @@ import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, 
 
 import { pocketbase, pocketbaseAuthReady } from '@/lib/pocketbase';
 
+import { authenticateWithApple } from './apple-sign-in';
+
 export type AppUser = RecordModel & {
   email: string;
   displayName: string;
@@ -15,6 +17,7 @@ type AuthContextValue = {
   user: AppUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithApple: () => Promise<boolean>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -66,6 +69,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       signIn: async (email, password) => {
         if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
         await pocketbase.collection('users').authWithPassword(email, password);
+      },
+      signInWithApple: async () => {
+        if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
+        return authenticateWithApple(pocketbase);
       },
       signUp: async (email, password) => {
         if (!pocketbase) throw new Error('M5-servern är inte konfigurerad.');
