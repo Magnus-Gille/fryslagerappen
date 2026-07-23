@@ -3,6 +3,8 @@ import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 're
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { useCaptureAnalysis } from '@/features/capture/capture-analysis-provider';
+import { CaptureStatusCard } from '@/features/capture/capture-status-card';
 import { AddItemModal, type CaptureMode } from '@/features/inventory/add-item-modal';
 import { InventoryCard } from '@/features/inventory/inventory-card';
 import { HomeMenu } from '@/features/home/home-menu';
@@ -17,6 +19,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { state, eatSoonItems, syncStatus, takeOne, moveItem, consumeItem } = useInventory();
+  const { state: captureState, clearCapture } = useCaptureAnalysis();
   const [query, setQuery] = useState('');
   const [locationId, setLocationId] = useState<string | undefined>();
   const [addEntry, setAddEntry] = useState<CaptureMode | 'chooser'>();
@@ -65,6 +68,20 @@ export default function HomeScreen() {
               </ThemedText>
             </Pressable>
           </View>
+
+          {captureState.status !== 'idle' && (
+            <CaptureStatusCard
+              state={captureState}
+              onReview={() => {
+                if (captureState.status === 'ready') setAddEntry(captureState.mode);
+              }}
+              onRetry={(mode) => {
+                clearCapture();
+                setAddEntry(mode);
+              }}
+              onDismiss={clearCapture}
+            />
+          )}
 
           <View style={[styles.search, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <ThemedText style={[styles.searchIcon, { color: theme.textTertiary }]}>⌕</ThemedText>
@@ -188,10 +205,12 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lägg till med foto"
+            disabled={captureState.status !== 'idle'}
             onPress={() => setAddEntry('photo')}
             style={({ pressed }) => [
               styles.quickAction,
               { backgroundColor: theme.primary },
+              captureState.status !== 'idle' && styles.disabled,
               pressed && styles.pressed,
             ]}>
             <ThemedText style={styles.quickActionIcon}>📷</ThemedText>
@@ -202,11 +221,13 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lägg till eller ändra med rösten"
+            disabled={captureState.status !== 'idle'}
             onPress={() => setAddEntry('voice')}
             style={({ pressed }) => [
               styles.quickAction,
               styles.quickActionSecondary,
               { backgroundColor: theme.surface, borderColor: theme.border },
+              captureState.status !== 'idle' && styles.disabled,
               pressed && styles.pressed,
             ]}>
             <ThemedText style={styles.quickActionIcon}>🎙️</ThemedText>
@@ -232,6 +253,12 @@ export default function HomeScreen() {
         <AddItemModal
           visible
           initialMode={addEntry === 'chooser' ? undefined : addEntry}
+          initialIntent={
+            captureState.status === 'ready' && addEntry === captureState.mode
+              ? captureState.intent
+              : undefined
+          }
+          onCaptureHandled={clearCapture}
           onClose={() => setAddEntry(undefined)}
         />
       )}
@@ -393,5 +420,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   moreIcon: { fontSize: 26, lineHeight: 30 },
+  disabled: { opacity: 0.45 },
   pressed: { opacity: 0.82, transform: [{ scale: 0.98 }] },
 });

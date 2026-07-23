@@ -12,6 +12,7 @@ COPYFILE_DISABLE=1 tar --no-xattrs -C "$repo_root/backend" -czf "$archive" pb_ho
 ssh m5 "mkdir -p '$remote_release' .local/share/iceage/pb_data .config/iceage .config/systemd/user"
 scp "$archive" "m5:$remote_release/backend.tar.gz"
 scp "$repo_root/backend/systemd/iceage-pocketbase.service" "m5:.config/systemd/user/iceage-pocketbase.service"
+scp "$repo_root/backend/systemd/iceage-extractor.service" "m5:.config/systemd/user/iceage-extractor.service"
 
 ssh m5 "set -euo pipefail
 cd '$remote_release'
@@ -34,9 +35,23 @@ if [[ ! -f \"\$HOME/.config/iceage/backend.env\" ]]; then
   test -n "\$tailnet_ip"
   printf 'ICEAGE_PB_ENCRYPTION_KEY=%s\\nICEAGE_ADMIN_EMAIL=%s\\nICEAGE_ADMIN_PASSWORD=%s\\nICEAGE_WHISPER_URL=%s\\nICEAGE_LLM_BASE_URL=%s\\nICEAGE_EXTRACTION_MODEL=%s\\n' \
     \"\$encryption_key\" 'admin@iceage.local' \"\$admin_password\" \
-    "http://\$tailnet_ip:8092/inference" 'http://127.0.0.1:8091/v1' 'gemma4' \
+    "http://\$tailnet_ip:8092/inference" 'http://127.0.0.1:8093/v1' 'gemma4' \
     > \"\$HOME/.config/iceage/backend.env\"
 fi
+
+umask 077
+updated_env=\$(mktemp \"\$HOME/.config/iceage/backend.env.XXXXXX\")
+cleanup_env() {
+  if [[ -n \"\${updated_env:-}\" ]]; then rm -f -- \"\$updated_env\"; fi
+}
+trap cleanup_env EXIT
+awk '!/^ICEAGE_LLM_BASE_URL=/ && !/^ICEAGE_EXTRACTION_MODEL=/' \
+  \"\$HOME/.config/iceage/backend.env\" > \"\$updated_env\"
+printf 'ICEAGE_LLM_BASE_URL=%s\\nICEAGE_EXTRACTION_MODEL=%s\\n' \
+  'http://127.0.0.1:8093/v1' 'gemma4' >> \"\$updated_env\"
+mv \"\$updated_env\" \"\$HOME/.config/iceage/backend.env\"
+updated_env=''
+chmod 0600 \"\$HOME/.config/iceage/backend.env\"
 
 set -a
 source \"\$HOME/.config/iceage/backend.env\"
@@ -51,7 +66,22 @@ set +a
   --dir \"\$HOME/.local/share/iceage/pb_data\" \
   --encryptionEnv ICEAGE_PB_ENCRYPTION_KEY >/dev/null
 ln -sfn \"releases/$release_id\" \"\$HOME/.local/opt/iceage/current\"
+test -x \"\$HOME/llama.cpp/build/bin/llama-server\"
+test -r \"\$HOME/models/gemma-4-26B-A4B-it-Q4_K_M.gguf\"
+test -r \"\$HOME/models/mmproj-gemma-4-26B-A4B-it-bf16.gguf\"
 systemctl --user daemon-reload
+systemctl --user enable iceage-extractor.service
+systemctl --user restart iceage-extractor.service
+extractor_healthy=0
+for _ in \$(seq 1 180); do
+  if curl -fsS http://127.0.0.1:8093/health >/dev/null 2>&1; then
+    extractor_healthy=1
+    break
+  fi
+  sleep 0.5
+done
+test "\$extractor_healthy" = 1
+systemctl --user is-active --quiet iceage-extractor.service
 systemctl --user enable --now iceage-pocketbase.service
 systemctl --user restart iceage-pocketbase.service
 healthy=0

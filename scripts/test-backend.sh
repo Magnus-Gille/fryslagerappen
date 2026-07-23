@@ -327,11 +327,14 @@ test "$wrong_household_status" = '403'
 photo_payload="$(jq -cn --arg home "$household_id" \
   '{homeId:$home,photoBase64:"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",photoMimeType:"image/png"}')"
 printf 'synthetic audio bytes' >"$test_root/voice.aiff"
-voice_transcript="$(curl -fsS -X POST "$base_url/api/iceage/extract" \
+voice_response="$(curl -fsS -X POST "$base_url/api/iceage/extract" \
   -H "authorization: Bearer $owner_token" \
   -F "homeId=$household_id" \
-  -F "audio=@$test_root/voice.aiff;type=audio/aiff" | jq -r .intent.transcript)"
-test "$voice_transcript" = 'Jag tar ut en testpåse.'
+  -F "audio=@$test_root/voice.aiff;type=audio/aiff")"
+test "$(printf '%s' "$voice_response" | jq -r .intent.transcript)" = 'Jag tar ut en testpåse.'
+test "$(printf '%s' "$voice_response" | jq -r '.timing.transcriptionMs >= 0')" = 'true'
+test "$(printf '%s' "$voice_response" | jq -r '.timing.inferenceMs >= 0')" = 'true'
+test "$(printf '%s' "$voice_response" | jq -r '.timing.totalMs >= (.timing.transcriptionMs + .timing.inferenceMs)')" = 'true'
 for _ in $(seq 1 59); do
   extracted_name="$(curl -fsS -X POST "$base_url/api/iceage/extract" \
     -H "authorization: Bearer $owner_token" \

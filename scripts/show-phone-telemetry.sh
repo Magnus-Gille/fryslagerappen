@@ -27,13 +27,18 @@ logs="$(printf 'header = "authorization: Bearer %s"\n' "$token" | \
   --data-urlencode 'sort=-created')"
 
 printf '%s' "$logs" | jq -r '
-  ["TIME", "EVENT", "STAGE", "STATUS", "ERROR", "SESSION"],
+  ["TIME", "EVENT", "STAGE", "TOTAL_MS", "SERVER_MS", "WHISPER_MS", "MODEL_MS", "STATUS", "ERROR", "DEVICE", "SESSION"],
   (.items[] | [
     .created,
     .data.event,
     (if (.data.stage // "") == "" then "-" else .data.stage end),
+    (if (.data.durationMs // 0) == 0 then "-" else (.data.durationMs | tostring) end),
+    (if (.data.serverDurationMs // 0) == 0 then "-" else (.data.serverDurationMs | tostring) end),
+    (if (.data.transcriptionMs // 0) == 0 then "-" else (.data.transcriptionMs | tostring) end),
+    (if (.data.inferenceMs // 0) == 0 then "-" else (.data.inferenceMs | tostring) end),
     (if (.data.status // 0) == 0 then "-" else (.data.status | tostring) end),
     (if (.data.errorMessage // "") == "" then "-" else .data.errorMessage end),
+    (if (.data.deviceModel // "") == "" then "-" else .data.deviceModel end),
     .data.sessionId
   ]) | @tsv
 '

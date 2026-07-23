@@ -43,6 +43,9 @@ routerAdd("POST", "/api/iceage/telemetry", (e) => {
     "errorCode", diagnostic.errorCode,
     "errorMessage", diagnostic.errorMessage,
     "durationMs", diagnostic.durationMs,
+    "serverDurationMs", diagnostic.serverDurationMs,
+    "transcriptionMs", diagnostic.transcriptionMs,
+    "inferenceMs", diagnostic.inferenceMs,
     "reachable", diagnostic.reachable,
   );
   return e.json(202, { accepted: true });
@@ -345,6 +348,7 @@ routerAdd("POST", "/api/iceage/items/{id}/mutate", (e) => {
 
 routerAdd("POST", "/api/iceage/extract", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
+  const startedAt = Date.now();
   const householdId = lib.household(e);
   const body = lib.body(e);
   if (String(body.homeId || body.householdId || "") !== householdId) throw new ForbiddenError();
@@ -361,7 +365,9 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
     throw new BadRequestError("Ta en bild eller spela in en beskrivning.");
   }
   lib.consumeExtractionQuota(e.app, e.auth.id);
+  const transcriptionStartedAt = Date.now();
   const transcript = audioFiles.length === 1 ? lib.transcribe(audioFiles[0]) : "";
+  const transcriptionMs = Date.now() - transcriptionStartedAt;
   if (!photoBase64 && !transcript) throw new BadRequestError("Ta en bild eller spela in en beskrivning.");
 
   const locations = e.app.findRecordsByFilter(lib.collections.locations, "household = {:household} && archivedAt = ''", "position", 50, 0, { household: householdId });
@@ -381,7 +387,16 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
     "Gissa aldrig ett tryckt datum. Ett uppskattat ät-före-datum ska markeras estimated.",
     "Markera varje osäkert fält. Svara på svenska.",
   ].join("\n");
+  const inferenceStartedAt = Date.now();
   const intent = lib.extractIntent(context, photoBase64, photoMimeType);
+  const inferenceMs = Date.now() - inferenceStartedAt;
   intent.transcript = transcript || null;
-  return e.json(200, { intent: intent });
+  return e.json(200, {
+    intent: intent,
+    timing: {
+      transcriptionMs: transcriptionMs,
+      inferenceMs: inferenceMs,
+      totalMs: Date.now() - startedAt,
+    },
+  });
 }, $apis.requireAuth("users"), $apis.bodyLimit(20 * 1024 * 1024));

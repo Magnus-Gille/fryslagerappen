@@ -106,6 +106,9 @@ function telemetry(body) {
     errorCode: telemetryDiagnostic(body.errorCode, 80),
     errorMessage: telemetryDiagnostic(body.errorMessage, 240),
     durationMs: telemetryNumber(body.durationMs, 0, 300000),
+    serverDurationMs: telemetryNumber(body.serverDurationMs, 0, 300000),
+    transcriptionMs: telemetryNumber(body.transcriptionMs, 0, 300000),
+    inferenceMs: telemetryNumber(body.inferenceMs, 0, 300000),
     reachable: body.reachable === true,
   };
 }

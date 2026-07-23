@@ -7,16 +7,18 @@ PocketBase account.
 
 Photo and voice captures are transient. The custom extraction route forwards
 audio to the M5's existing `whisper-server` and structured multimodal requests
-to `llama-swap`. Neither raw media nor transcripts are stored in PocketBase.
-The inference URLs are configurable so the Orin Nano can later replace either
-worker without changing the app.
+to a dedicated, loopback-only `llama-server` that keeps the multimodal model
+warm. This avoids model swaps on the interactive capture path. Neither raw
+media nor transcripts are stored in PocketBase. The inference URLs remain
+configurable so the Orin Nano can later replace either worker without changing
+the app.
 
 ## Layout
 
 - `pb_migrations/`: versioned schema and collection authorization rules
 - `pb_hooks/`: authenticated Home, member, storage-place, inventory, invitation, and extraction
   routes
-- `systemd/`: hardened user service for the M5
+- `systemd/`: hardened PocketBase and warm extraction services for the M5
 - `VERSION`: pinned PocketBase release used by validation and deployment
 
 The service listens only on `127.0.0.1:8090`. Tailscale Serve terminates HTTPS
@@ -28,7 +30,8 @@ be enabled for this service.
 Private native builds send a small allowlisted diagnostic event at app launch,
 after the backend health probe, at each Apple-login stage, and when Home,
 inventory, realtime, mutation, or capture operations fail. Capture start and
-success timings are also recorded. The pre-login endpoint is limited to 8 KiB
+success timings are also recorded, split into phone-observed, server,
+transcription, and model inference durations. The pre-login endpoint is limited to 8 KiB
 and 120 requests per source IP per minute. It accepts only event, build, device,
 stage, status, duration, and redacted error fields. It never accepts or stores
 photos, audio, transcripts, inventory, emails, passwords, auth tokens, or Apple
