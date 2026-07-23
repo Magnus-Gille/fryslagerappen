@@ -76,8 +76,10 @@ export function AuthScreen() {
             placeholder="Lösenord, minst 12 tecken"
             placeholderTextColor={theme.textTertiary}
             secureTextEntry
+            returnKeyType="go"
             value={password}
             onChangeText={setPassword}
+            onSubmitEditing={() => void submit()}
             style={[styles.input, { color: theme.text, borderColor: theme.border }]}
           />
           {message && <ThemedText type="small" style={{ color: theme.warningText }}>{message}</ThemedText>}

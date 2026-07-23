@@ -97,8 +97,10 @@ Autentisering sker med e-post och lösenord mot PocketBase på M5.
 Native-sessionen lagras i iOS Keychain/Android Keystore via
 `expo-secure-store`. Collection rules begränsar läsning till det autentiserade
 hushållet och alla skrivningar går genom validerade serverroutes. Foto och ljud
-skickas till en autentiserad route och vidare till M5:s Whisper/llama-swap men
-lagras inte av appen eller backend.
+skickas till en autentiserad route och vidare till M5:s Whisper och en dedikerad
+varmhållen multimodal `llama-server`, men lagras inte av appen eller backend.
+`scripts/deploy-m5.sh` installerar båda M5-tjänsterna och väntar på deras
+healthchecks före en lyckad deploy.
 
 ## Kontroller
 

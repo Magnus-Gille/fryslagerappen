@@ -1,7 +1,7 @@
 [Unit]
 Description=Fryslagerappen PocketBase backend
-After=network-online.target tailscaled.service llama-swap.service
-Wants=network-online.target
+After=network-online.target tailscaled.service iceage-extractor.service
+Wants=network-online.target iceage-extractor.service
 
 [Service]
 Type=simple

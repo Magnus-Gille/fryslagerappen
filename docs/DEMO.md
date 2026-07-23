@@ -5,8 +5,10 @@ Den mest värdefulla demon är nu den riktiga kärnloopen:
 1. logga in och välj eller skapa ett Home;
 2. tryck direkt på **Foto** eller **Röst** på startsidan;
 3. låt M5 tolka etiketten eller den svenska beskrivningen;
-4. kontrollera namn, mängd, förvaringsplats och datum;
-5. bekräfta och se lagret uppdateras för hemmets medlemmar.
+4. fortsätt använda lagret medan tolkningen pågår och öppna sedan det färdiga
+   förslaget från startsidan;
+5. kontrollera namn, mängd, förvaringsplats och datum;
+6. bekräfta och se lagret uppdateras för hemmets medlemmar.
 
 Ingen råbild, ljudfil eller transkription sparas. Inventeringen ändras inte
 förrän användaren har bekräftat förslaget.
@@ -57,5 +59,5 @@ riktiga M5-tolkningen på en syntetisk eller uttryckligen godkänd etikettbild,
 - Appen har ännu inte den planerade SQLite-persistensen och synkkön. I
   autentiserat läge är PocketBase källan till lagret; utan backend används bara
   omstartningsbar demodata.
-- Tvåpersoners användningstest och fysisk installation återstår och ska inte
-  förväxlas med den automatiserade realtime-verifieringen.
+- Det löpande tvåpersoners användningstestet med Magnus och Sara ersätter inte
+  riktad testning av svag uppkoppling, ovanliga etiketter och längre röstfraser.

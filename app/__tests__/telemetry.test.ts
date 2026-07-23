@@ -23,6 +23,10 @@ describe('phone test telemetry', () => {
       status: 400,
       errorCode: 'oauth2_exchange_failed',
       errorMessage: 'Only superusers can perform this action for magnus@example.com Bearer secret-token',
+      durationMs: 4_200,
+      serverDurationMs: 3_900,
+      transcriptionMs: 1_100,
+      inferenceMs: 2_700,
       email: 'must-not-leave-the-phone@example.com',
       authorizationCode: 'must-not-leave-the-phone',
     } as never);
@@ -43,6 +47,10 @@ describe('phone test telemetry', () => {
       status: 400,
       errorCode: 'oauth2_exchange_failed',
       errorMessage: 'Only superusers can perform this action for [email] [credential]',
+      durationMs: 4_200,
+      serverDurationMs: 3_900,
+      transcriptionMs: 1_100,
+      inferenceMs: 2_700,
     });
     expect(request.body).not.toContain('must-not-leave-the-phone');
     expect(request.headers).not.toHaveProperty('authorization');

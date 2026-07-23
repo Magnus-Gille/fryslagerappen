@@ -34,6 +34,9 @@ export type TelemetryDetails = {
   errorCode?: string;
   errorMessage?: string;
   durationMs?: number;
+  serverDurationMs?: number;
+  transcriptionMs?: number;
+  inferenceMs?: number;
   reachable?: boolean;
 };
 
@@ -119,6 +122,9 @@ export function createTelemetryClient(options: TelemetryClientOptions) {
       errorCode: boundedText(details.errorCode, 80),
       errorMessage: redact(details.errorMessage),
       durationMs: boundedNumber(details.durationMs, 0, 300_000),
+      serverDurationMs: boundedNumber(details.serverDurationMs, 0, 300_000),
+      transcriptionMs: boundedNumber(details.transcriptionMs, 0, 300_000),
+      inferenceMs: boundedNumber(details.inferenceMs, 0, 300_000),
       reachable: typeof details.reachable === 'boolean' ? details.reachable : undefined,
     };
     const cleanPayload = Object.fromEntries(

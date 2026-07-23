@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import AppTabs from '@/components/app-tabs';
 import { AuthProvider, useAuth } from '@/features/auth/auth-provider';
 import { AuthScreen } from '@/features/auth/auth-screen';
+import { CaptureAnalysisProvider } from '@/features/capture/capture-analysis-provider';
 import { HomeProvider, useHome } from '@/features/home/home-provider';
 import { HomeScreen } from '@/features/home/home-screen';
 import { InventoryProvider } from '@/features/inventory/inventory-provider';
@@ -44,7 +45,9 @@ function AppGate() {
   }
   return (
     <InventoryProvider>
-      <AppTabs />
+      <CaptureAnalysisProvider>
+        <AppTabs />
+      </CaptureAnalysisProvider>
     </InventoryProvider>
   );
 }

@@ -5,7 +5,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -20,40 +20,41 @@ export function VoiceRecorder({ onRecorded }: { onRecorded: (uri: string) => voi
   const [error, setError] = useState<string>();
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopping = useRef(false);
+  const operationBusy = useRef(false);
+  const recordingActive = useRef(false);
+  const autoStartAttempted = useRef(false);
+  const onRecordedRef = useRef(onRecorded);
 
-  useEffect(
-    () => () => {
-      if (stopTimer.current) clearTimeout(stopTimer.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    onRecordedRef.current = onRecorded;
+  }, [onRecorded]);
 
-  async function stopAndSubmit() {
-    if (stopping.current) return;
+  const stopAndSubmit = useCallback(async () => {
+    if (stopping.current || !recordingActive.current) return;
     stopping.current = true;
+    operationBusy.current = true;
     setBusy(true);
     setError(undefined);
     if (stopTimer.current) clearTimeout(stopTimer.current);
     stopTimer.current = null;
     try {
       await recorder.stop();
+      recordingActive.current = false;
       await setAudioModeAsync({ allowsRecording: false });
       if (!recorder.uri) throw new Error('Inget ljudklipp skapades.');
-      onRecorded(recorder.uri);
+      onRecordedRef.current(recorder.uri);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Röstinspelningen misslyckades.');
     } finally {
       stopping.current = false;
+      operationBusy.current = false;
       setBusy(false);
     }
-  }
+  }, [recorder]);
 
-  async function toggle() {
-    if (busy) return;
-    if (recorderState.isRecording) {
-      await stopAndSubmit();
-      return;
-    }
+  const startRecording = useCallback(async () => {
+    if (operationBusy.current || recordingActive.current) return;
+    operationBusy.current = true;
     setBusy(true);
     setError(undefined);
     try {
@@ -62,19 +63,53 @@ export function VoiceRecorder({ onRecorded }: { onRecorded: (uri: string) => voi
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
       recorder.record();
+      recordingActive.current = true;
       stopTimer.current = setTimeout(() => void stopAndSubmit(), 30_000);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Röstinspelningen misslyckades.');
     } finally {
+      operationBusy.current = false;
       setBusy(false);
     }
+  }, [recorder, stopAndSubmit]);
+
+  useEffect(() => {
+    if (!autoStartAttempted.current) {
+      autoStartAttempted.current = true;
+      void startRecording();
+    }
+    return () => {
+      if (stopTimer.current) clearTimeout(stopTimer.current);
+      if (recordingActive.current) {
+        recordingActive.current = false;
+        void recorder.stop().catch((cleanupError) => {
+          console.warn('Kunde inte stoppa röstinspelningen vid stängning.', cleanupError);
+        });
+        void setAudioModeAsync({ allowsRecording: false }).catch((cleanupError) => {
+          console.warn('Kunde inte återställa ljudläget vid stängning.', cleanupError);
+        });
+      }
+    };
+  }, [recorder, startRecording]);
+
+  async function toggle() {
+    if (operationBusy.current) return;
+    if (recorderState.isRecording || recordingActive.current) {
+      await stopAndSubmit();
+      return;
+    }
+    await startRecording();
   }
 
   const seconds = Math.max(0, Math.round(recorderState.durationMillis / 1000));
   return (
     <View style={styles.wrap}>
       <ThemedText type="sectionTitle">{recorderState.isRecording ? `Lyssnar … ${seconds} s` : 'Säg vad som ändras'}</ThemedText>
-      <ThemedText themeColor="textSecondary" style={styles.copy}>Till exempel: “Två paket pasta på hyllan i ateljén” eller “Jag tar ut en laxfilé”.</ThemedText>
+      <ThemedText themeColor="textSecondary" style={styles.copy}>
+        {busy && !recorderState.isRecording
+          ? 'Förbereder mikrofonen …'
+          : 'Inspelningen startar direkt. Säg till exempel: “Två paket pasta på hyllan i ateljén” eller “Jag tar ut en laxfilé”.'}
+      </ThemedText>
       <Pressable accessibilityRole="button" accessibilityLabel={recorderState.isRecording ? 'Stoppa inspelning' : 'Starta inspelning'} onPress={toggle} style={[styles.mic, { backgroundColor: recorderState.isRecording ? theme.accent : theme.primary }]}>
         {busy ? <ActivityIndicator color="#FFFFFF" /> : <ThemedText style={styles.micIcon}>{recorderState.isRecording ? '■' : '🎙️'}</ThemedText>}
       </Pressable>

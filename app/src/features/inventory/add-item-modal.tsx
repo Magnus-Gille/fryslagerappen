@@ -26,6 +26,8 @@ export type CaptureMode = 'photo' | 'voice' | 'manual';
 type Props = {
   visible: boolean;
   initialMode?: CaptureMode;
+  initialIntent?: CaptureIntent;
+  onCaptureHandled?: () => void;
   onClose: () => void;
 };
 
@@ -42,18 +44,28 @@ const manualSuggestion: Omit<AddItemInput, 'locationId'> = {
   note: '',
 };
 
-export function AddItemModal({ visible, initialMode, onClose }: Props) {
+export function AddItemModal({
+  visible,
+  initialMode,
+  initialIntent,
+  onCaptureHandled,
+  onClose,
+}: Props) {
   const theme = useTheme();
   const { state, addItem, removeQuantity, moveItem, consumeItem } = useInventory();
   const [mode, setMode] = useState<CaptureMode | null>(initialMode ?? null);
-  const [intent, setIntent] = useState<CaptureIntent | null>(null);
+  const [intent, setIntent] = useState<CaptureIntent | null>(initialIntent ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const [form, setForm] = useState<AddItemInput>({
-    ...manualSuggestion,
-    locationId:
-      initialMode === 'manual' ? (state.locations[0]?.id ?? 'upstairs') : 'upstairs',
-  });
+  const [form, setForm] = useState<AddItemInput>(() =>
+    initialIntent?.action === 'add'
+      ? toAddItemInput(initialIntent, state.locations)
+      : {
+          ...manualSuggestion,
+          locationId:
+            initialMode === 'manual' ? (state.locations[0]?.id ?? 'upstairs') : 'upstairs',
+        },
+  );
 
   function chooseMode(nextMode: CaptureMode) {
     setMode(nextMode);
@@ -62,11 +74,6 @@ export function AddItemModal({ visible, initialMode, onClose }: Props) {
     if (nextMode === 'manual') {
       setForm({ ...manualSuggestion, locationId: state.locations[0]?.id ?? 'upstairs' });
     }
-  }
-
-  function captureComplete(nextIntent: CaptureIntent) {
-    setIntent(nextIntent);
-    if (nextIntent.action === 'add') setForm(toAddItemInput(nextIntent, state.locations));
   }
 
   function update<K extends keyof AddItemInput>(key: K, value: AddItemInput[K]) {
@@ -79,6 +86,7 @@ export function AddItemModal({ visible, initialMode, onClose }: Props) {
     setError(undefined);
     try {
       await addItem({ ...form, name: form.name.trim(), quantity: Math.max(1, form.quantity) });
+      if (intent) onCaptureHandled?.();
       close();
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Det gick inte att spara varan.');
@@ -119,6 +127,7 @@ export function AddItemModal({ visible, initialMode, onClose }: Props) {
         if (!destinationId) throw new Error('Kunde inte hitta målplatsen.');
         await moveItem(item.id, destinationId);
       }
+      onCaptureHandled?.();
       close();
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'Ändringen misslyckades.');
@@ -147,8 +156,8 @@ export function AddItemModal({ visible, initialMode, onClose }: Props) {
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.header}>
-            <Pressable accessibilityRole="button" onPress={mode ? () => setMode(null) : close}>
-              <ThemedText style={{ color: theme.primary }}>{mode ? 'Tillbaka' : 'Stäng'}</ThemedText>
+            <Pressable accessibilityRole="button" onPress={mode && !intent ? () => setMode(null) : close}>
+              <ThemedText style={{ color: theme.primary }}>{mode && !intent ? 'Tillbaka' : 'Stäng'}</ThemedText>
             </Pressable>
             <ThemedText type="itemTitle">Lägg till vara</ThemedText>
             <View style={styles.headerSpacer} />
@@ -157,7 +166,7 @@ export function AddItemModal({ visible, initialMode, onClose }: Props) {
           {mode === null ? (
             <CaptureChooser onChoose={chooseMode} />
           ) : mode !== 'manual' && intent === null ? (
-            <CaptureFlow mode={mode} onComplete={captureComplete} />
+            <CaptureFlow mode={mode} onSubmitted={close} />
           ) : intent && intent.action !== 'add' ? (
             <CapturedChangeConfirmation
               intent={intent}

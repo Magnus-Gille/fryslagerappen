@@ -37,11 +37,18 @@ the private tailnet infrastructure.
 - The inventory screen now exposes one-tap **Foto** and **Röst** actions. Photo
   capture also accepts an existing library image, so the real M5 path is
   demonstrable in iOS Simulator without pretending that its camera works.
+- Photo and voice analysis now continues in the background after capture, so
+  the capture sheet closes immediately and the inventory stays usable. A
+  compact status card exposes elapsed time, review-on-ready, retry, and dismiss;
+  the inventory is changed only after explicit confirmation.
+- Voice capture starts recording as soon as the explicitly selected voice flow
+  opens, removing one extra tap.
 - PocketBase 0.39.8 runs as a hardened user service on M5, bound only to
   loopback and is exposed to enrolled devices through private Tailscale Serve
-  HTTPS; Funnel remains disabled. It uses the existing M5 Whisper and
-  llama-swap workers; their URLs remain configurable so Orin Nano can take over
-  either workload later.
+  HTTPS; Funnel remains disabled. It uses the existing M5 Whisper worker and a
+  dedicated loopback-only llama-server that keeps Gemma 4 warm for interactive
+  captures; their URLs remain configurable so Orin Nano can take over either
+  workload later.
 - The public GitHub Pages app is intentionally built without a private backend
   URL and remains a local demo. Authenticated mode is enabled only in private
   native builds on devices connected to the tailnet.
@@ -58,12 +65,16 @@ the private tailnet infrastructure.
 - A synthetic freezer-label image was extracted on M5 as two bags of salmon
   fillet with the printed freeze date; a synthetic Swedish voice clip was
   transcribed and interpreted as removing one bag from the upstairs freezer.
+- The warm extraction service produced the same structured synthetic-label
+  result in 2.3 seconds on first request and 1.1 seconds warm, versus roughly
+  53 seconds observed on the previous phone path when llama-swap first had to
+  replace another loaded model. Reasoning is disabled for this structured task.
 - A two-account SSE test delivered a new item to the second household member in
   under five seconds, while an outsider saw zero items and a member could not
   issue invitations.
 - All synthetic accounts, households, items, events, invitations, and quotas
   were removed after the remote tests.
-- Expo Doctor 20/20, ESLint, TypeScript, 10 Jest suites / 41 tests, static web
+- Expo Doctor 20/20, ESLint, TypeScript, 11 Jest suites / 46 tests, static web
   export, a native iOS simulator build, migration validation, Bash syntax, Git
   whitespace checks, and secret scanning pass. The simulator login screen was
   visually inspected after launch; its disabled action state was corrected.
@@ -90,8 +101,9 @@ the private tailnet infrastructure.
   and context-spoofed creation and created no user records.
 - Phone telemetry ingestion, redaction, unknown-event rejection, the 8 KiB body
   limit, and the 120-events/minute source-IP limit pass the PocketBase integration
-  suite. M5 release `20260722200722` is healthy, and a real simulator launch
-  produced correlated `app_started` and `backend_probe_succeeded` events.
+  suite. M5 release `20260723090753` and its dedicated extractor service are
+  healthy, and a real simulator launch produced correlated `app_started` and
+  `backend_probe_succeeded` events.
 - The telemetry-enabled company-team Release build is installed on the paired
   iPhone as version 1.0.0 (bundle version 1). CoreDevice verified the installed
   app; automatic foreground launch was denied only because the phone was locked.
@@ -102,27 +114,28 @@ the private tailnet infrastructure.
   TypeScript, 10 Jest suites / 43 tests, a static web export, a signed device
   archive, and a native Release build launched and visually inspected in the
   iPhone 16e simulator.
+- The background capture status states were visually verified in a native
+  Release build on the iPhone 16e simulator.
 - `npm audit --omit=dev` reports 11 moderate Expo-toolchain advisories and no
   high or critical findings. The proposed forced fix is an incompatible Expo
   downgrade and remains deferred.
 
 ## Remaining handoffs
 
-- Sara must be added as a narrowly scoped App Store Connect user using her Apple
-  Account email, then added to `Familjen`. Her iPhone must also join the private
-  Tailscale tailnet before the app can reach M5.
-- Apple login still needs one unlocked-device end-to-end attempt on the paired
-  iPhone. The installed build and M5 provider are ready, and its stage-by-stage
-  result will be visible immediately through the telemetry reader.
+- Sara has joined App Store Connect/TestFlight, installed the app, joined the
+  private Tailscale tailnet, signed in with Apple, and joined Magnus's Home.
+  Magnus and Sara are now the active two-person pilot.
 - The planned SQLite persistence and sync queue are not implemented yet. The
   authenticated prototype currently depends on PocketBase being reachable;
   local demo data resets when the app process restarts.
-- The two-person contextual usability tests still require Magnus and Sara;
-  their outcomes must not be inferred from automated or simulator checks.
+- The two-person pilot still needs deliberate weak-network, unusual-label, and
+  longer-voice-phrase tests; keep using the low-friction telemetry reader to
+  ground follow-up changes in phone-observed timings.
 
 ## Next step
 
-Follow `docs/TESTFLIGHT.md` to add Sara to App Store Connect, the `Familjen`
-group, and Tailscale. Then install the TestFlight build on both phones, attempt
-**Sign in with Apple**, inspect `./scripts/show-phone-telemetry.sh`, and run the
-documented two-person contextual test.
+Publish the background-capture build to the automatically distributed
+`Familjen` TestFlight group. Then have Magnus and Sara try photo-only,
+voice-only, and photo-plus-voice captures in ordinary kitchen use and inspect
+`./scripts/show-phone-telemetry.sh` for device, server, transcription, and model
+timings.
