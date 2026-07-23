@@ -15,6 +15,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { CaptureFlow } from '@/features/capture/capture-flow';
 import { findLocationId, toAddItemInput, type CaptureIntent } from '@/features/capture/capture-intent';
+import { addItemFeedbackContext } from '@/features/feedback/feedback-context';
+import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { useTheme } from '@/hooks/use-theme';
 
 import { useInventory } from './inventory-provider';
@@ -66,6 +68,7 @@ export function AddItemModal({
             initialMode === 'manual' ? (state.locations[0]?.id ?? 'upstairs') : 'upstairs',
         },
   );
+  const feedbackContext = addItemFeedbackContext(mode, intent?.action ?? null);
 
   function chooseMode(nextMode: CaptureMode) {
     setMode(nextMode);
@@ -314,6 +317,7 @@ export function AddItemModal({
               </Pressable>
             </ScrollView>
           )}
+          <FeedbackOverlay context={feedbackContext} />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>

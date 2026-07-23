@@ -51,6 +51,47 @@ routerAdd("POST", "/api/iceage/telemetry", (e) => {
   return e.json(202, { accepted: true });
 }, $apis.bodyLimit(8 * 1024));
 
+routerAdd("POST", "/api/iceage/feedback", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  lib.consumeFeedbackQuota(e);
+  const input = lib.feedback(e.requestInfo().body || {});
+  const feedback = new Record(e.app.findCollectionByNameOrId(lib.collections.feedback));
+
+  feedback.set("message", input.message);
+  feedback.set("kind", input.kind);
+  feedback.set("route", input.route);
+  feedback.set("screen", input.screen);
+  feedback.set("flow", input.flow);
+  feedback.set("step", input.step);
+  feedback.set("sessionId", input.sessionId);
+  feedback.set("appVersion", input.appVersion);
+  feedback.set("buildNumber", input.buildNumber);
+  feedback.set("platform", input.platform);
+  feedback.set("osVersion", input.osVersion);
+  feedback.set("deviceModel", input.deviceModel);
+  if (e.auth && e.auth.id) {
+    feedback.set("user", e.auth.id);
+    feedback.set("household", e.auth.getString("household"));
+  }
+  e.app.save(feedback);
+
+  $app.logger().info("client.feedback",
+    "feedbackId", feedback.id,
+    "kind", input.kind,
+    "route", input.route,
+    "screen", input.screen,
+    "flow", input.flow,
+    "step", input.step,
+    "sessionId", input.sessionId,
+    "appVersion", input.appVersion,
+    "buildNumber", input.buildNumber,
+    "platform", input.platform,
+    "deviceModel", input.deviceModel,
+    "authenticated", Boolean(e.auth && e.auth.id),
+  );
+  return e.json(202, { accepted: true, id: feedback.id });
+}, $apis.bodyLimit(8 * 1024));
+
 routerAdd("POST", "/api/iceage/signup", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
   const body = lib.body(e);

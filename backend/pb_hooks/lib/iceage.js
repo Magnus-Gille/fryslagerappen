@@ -6,6 +6,7 @@ const collections = {
   events: "inventory_events",
   invitations: "household_invitations",
   quotas: "extraction_quotas",
+  feedback: "user_feedback",
 };
 
 const intentSchema = {
@@ -56,8 +57,12 @@ const allowedTelemetryEvents = [
   "capture_extraction_started",
   "capture_extraction_succeeded",
   "capture_extraction_failed",
+  "feedback_opened",
+  "feedback_succeeded",
+  "feedback_failed",
 ];
 const telemetryRateLimits = {};
+const feedbackRateLimits = {};
 
 function telemetryText(value, max) {
   if (typeof value !== "string") return "";
@@ -110,6 +115,57 @@ function telemetry(body) {
     transcriptionMs: telemetryNumber(body.transcriptionMs, 0, 300000),
     inferenceMs: telemetryNumber(body.inferenceMs, 0, 300000),
     reachable: body.reachable === true,
+  };
+}
+
+function consumeFeedbackQuota(e) {
+  const key = e.remoteIP();
+  const now = Date.now();
+  const current = feedbackRateLimits[key];
+  const expired = !current || now - current.startedAt >= 60 * 60 * 1000;
+  const next = expired
+    ? { startedAt: now, count: 1 }
+    : { startedAt: current.startedAt, count: current.count + 1 };
+  feedbackRateLimits[key] = next;
+  if (next.count > 10) throw new ApiError(429, "För många feedbackmeddelanden.");
+}
+
+function feedbackSlug(value, label, required) {
+  const result = telemetryText(value, 80);
+  if ((!result && required) || (result && !/^[A-Za-z0-9_-]+$/.test(result))) {
+    throw new BadRequestError("Ogiltig feedbackkontext: " + label + ".");
+  }
+  return result;
+}
+
+function feedback(body) {
+  const message = telemetryDiagnostic(body.message, 1500);
+  const kind = telemetryText(body.kind, 24);
+  const route = telemetryText(body.route, 120).split(/[?#]/, 1)[0];
+  const sessionId = telemetryText(body.sessionId, 64);
+  if (!message) throw new BadRequestError("Feedbackmeddelandet saknas.");
+  if (!["problem", "confusing", "idea", "other"].includes(kind)) {
+    throw new BadRequestError("Ogiltig feedbacktyp.");
+  }
+  if (!/^\/[A-Za-z0-9/_-]{0,119}$/.test(route)) {
+    throw new BadRequestError("Ogiltig feedbackrutt.");
+  }
+  if (sessionId && !/^[A-Za-z0-9_-]{8,64}$/.test(sessionId)) {
+    throw new BadRequestError("Ogiltig feedbacksession.");
+  }
+  return {
+    message: message,
+    kind: kind,
+    route: route,
+    screen: feedbackSlug(body.screen, "skärm", true),
+    flow: feedbackSlug(body.flow, "flöde", false),
+    step: feedbackSlug(body.step, "steg", false),
+    sessionId: sessionId,
+    appVersion: telemetryDiagnostic(body.appVersion, 32),
+    buildNumber: telemetryDiagnostic(body.buildNumber, 32),
+    platform: telemetryDiagnostic(body.platform, 24),
+    osVersion: telemetryDiagnostic(body.osVersion, 48),
+    deviceModel: telemetryDiagnostic(body.deviceModel, 80),
   };
 }
 
@@ -298,6 +354,8 @@ module.exports = {
   publicRecord,
   consumeTelemetryQuota,
   telemetry,
+  consumeFeedbackQuota,
+  feedback,
   consumeExtractionQuota,
   transcribe,
   extractIntent,

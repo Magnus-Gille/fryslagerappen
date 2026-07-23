@@ -120,6 +120,24 @@ admin_auth="$(curl -fsS -X POST "$base_url/api/collections/_superusers/auth-with
   -H 'content-type: application/json' \
   --data "{\"identity\":\"test-admin@example.invalid\",\"password\":\"$test_admin_password\"}")"
 admin_token="$(printf '%s' "$admin_auth" | jq -r .token)"
+anonymous_feedback_status="$(curl -sS -o "$test_root/feedback-response.json" -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/feedback" \
+  -H 'content-type: application/json' \
+  --data '{"message":"Svårt att hitta här för test@example.invalid token=secret-value","kind":"confusing","route":"/","screen":"authentication","flow":"sign-in","step":"credentials","sessionId":"feedback-test-session","appVersion":"1.0.0","buildNumber":"77","platform":"ios","deviceModel":"iPhone","inventory":["must-not-be-stored"],"screenshot":"must-not-be-stored"}')"
+test "$anonymous_feedback_status" = '202'
+anonymous_feedback_id="$(jq -r .id "$test_root/feedback-response.json")"
+anonymous_feedback="$(curl -fsS "$base_url/api/collections/user_feedback/records/$anonymous_feedback_id" \
+  -H "authorization: Bearer $admin_token")"
+test "$(printf '%s' "$anonymous_feedback" | jq -r .message)" = 'Svårt att hitta här för [email] token=[credential]'
+test "$(printf '%s' "$anonymous_feedback" | jq -r .screen)" = 'authentication'
+test "$(printf '%s' "$anonymous_feedback" | jq -r '.user // ""')" = ''
+test "$(printf '%s' "$anonymous_feedback" | jq -r '.inventory // ""')" = ''
+test "$(printf '%s' "$anonymous_feedback" | jq -r '.screenshot // ""')" = ''
+invalid_feedback_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/feedback" \
+  -H 'content-type: application/json' \
+  --data '{"message":"Test","kind":"arbitrary","route":"/","screen":"inventory"}')"
+test "$invalid_feedback_status" = '400'
 telemetry_status="$(curl -sS -o "$test_root/telemetry-response.json" -w '%{http_code}' -X POST \
   "$base_url/api/iceage/telemetry" \
   -H 'content-type: application/json' \
@@ -196,6 +214,19 @@ household="$(curl -fsS -X POST "$base_url/api/iceage/homes" \
 household_id="$(printf '%s' "$household" | jq -r .homeId)"
 owner_token="$(curl -fsS -X POST "$base_url/api/collections/users/auth-refresh" \
   -H "authorization: Bearer $owner_token" | jq -r .token)"
+authenticated_feedback="$(curl -fsS -X POST "$base_url/api/iceage/feedback" \
+  -H "authorization: Bearer $owner_token" \
+  -H 'content-type: application/json' \
+  --data '{"message":"Flyttvyn är svår","kind":"problem","route":"/","screen":"inventory","flow":"move-item","step":"choose-destination","sessionId":"feedback-owner-session"}')"
+authenticated_feedback_id="$(printf '%s' "$authenticated_feedback" | jq -r .id)"
+authenticated_feedback_record="$(curl -fsS "$base_url/api/collections/user_feedback/records/$authenticated_feedback_id" \
+  -H "authorization: Bearer $admin_token")"
+test "$(printf '%s' "$authenticated_feedback_record" | jq -r .user)" = "$(printf '%s' "$owner" | jq -r .record.id)"
+test "$(printf '%s' "$authenticated_feedback_record" | jq -r .household)" = "$household_id"
+feedback_list_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+  "$base_url/api/collections/user_feedback/records" \
+  -H "authorization: Bearer $owner_token")"
+test "$feedback_list_status" = '403'
 locations="$(curl -fsS "$base_url/api/collections/locations/records?sort=position" \
   -H "authorization: Bearer $owner_token")"
 test "$(printf '%s' "$locations" | jq -r .totalItems)" = '5'
@@ -234,7 +265,7 @@ occupied_archive_status="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
   -H "authorization: Bearer $owner_token")"
 test "$occupied_archive_status" = '400'
 
-for collection in households locations items inventory_events household_invitations extraction_quotas; do
+for collection in households locations items inventory_events household_invitations extraction_quotas user_feedback; do
   direct_create_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
     "$base_url/api/collections/$collection/records" \
     -H "authorization: Bearer $owner_token" \
@@ -242,6 +273,19 @@ for collection in households locations items inventory_events household_invitati
     --data '{}')"
   test "$direct_create_status" = '403'
 done
+
+for feedback_sequence in $(seq 4 10); do
+  feedback_loop_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+    "$base_url/api/iceage/feedback" \
+    -H 'content-type: application/json' \
+    --data "{\"message\":\"Rate test $feedback_sequence\",\"kind\":\"other\",\"route\":\"/\",\"screen\":\"inventory\",\"sessionId\":\"feedback-rate-session\"}")"
+  test "$feedback_loop_status" = '202'
+done
+feedback_quota_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/feedback" \
+  -H 'content-type: application/json' \
+  --data '{"message":"One too many","kind":"other","route":"/","screen":"inventory","sessionId":"feedback-rate-session"}')"
+test "$feedback_quota_status" = '429'
 for target in "households/records/$household_id" "locations/records/$location_id" "items/records/$item_id"; do
   direct_update_status="$(curl -sS -o /dev/null -w '%{http_code}' -X PATCH \
     "$base_url/api/collections/$target" \
@@ -374,4 +418,4 @@ test "$remaining_members" = '1'
 event_count="$(curl -fsS "$base_url/api/collections/inventory_events/records" \
   -H "authorization: Bearer $owner_token" | jq -r .totalItems)"
 test "$event_count" = '2'
-printf 'backend=ok telemetry=sanitized homeModel=5 configurableLocations=ok members=ok legacyUpgrade=ok itemVersion=2 conflict=409 memberItems=1 memberInvite=403 outsiderItems=0 directWrites=403 photoVoiceExtraction=ok quota=429 userWrites=403 events=2\n'
+printf 'backend=ok telemetry=sanitized feedback=private feedbackQuota=429 homeModel=5 configurableLocations=ok members=ok legacyUpgrade=ok itemVersion=2 conflict=409 memberItems=1 memberInvite=403 outsiderItems=0 directWrites=403 photoVoiceExtraction=ok quota=429 userWrites=403 events=2\n'
