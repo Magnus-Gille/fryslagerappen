@@ -110,6 +110,9 @@ the private tailnet infrastructure.
 - Version 1.0.0 build 2607222256 was archived with the company team, accepted by
   App Store Connect, processed successfully, and attached to the internal
   `Familjen` group. Magnus is invited as the first internal tester.
+- Version 1.0.0 build 260723094432, containing the background capture flow and
+  warm M5 extractor integration, was archived with the company team and accepted
+  by App Store Connect for TestFlight processing.
 - The TestFlight-ready configuration was verified by Expo Doctor 20/20, ESLint,
   TypeScript, 10 Jest suites / 43 tests, a static web export, a signed device
   archive, and a native Release build launched and visually inspected in the
@@ -134,8 +137,8 @@ the private tailnet infrastructure.
 
 ## Next step
 
-Publish the background-capture build to the automatically distributed
-`Familjen` TestFlight group. Then have Magnus and Sara try photo-only,
-voice-only, and photo-plus-voice captures in ordinary kitchen use and inspect
-`./scripts/show-phone-telemetry.sh` for device, server, transcription, and model
-timings.
+Wait for build 260723094432 to finish TestFlight processing and appear in the
+automatically distributed `Familjen` group. Then have Magnus and Sara update
+and try photo-only, voice-only, and photo-plus-voice captures in ordinary
+kitchen use, and inspect `./scripts/show-phone-telemetry.sh` for device, server,
+transcription, and model timings.
