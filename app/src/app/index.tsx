@@ -5,6 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ThemedText } from '@/components/themed-text';
 import { useCaptureAnalysis } from '@/features/capture/capture-analysis-provider';
 import { CaptureStatusCard } from '@/features/capture/capture-status-card';
+import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { AddItemModal, type CaptureMode } from '@/features/inventory/add-item-modal';
 import { InventoryCard } from '@/features/inventory/inventory-card';
 import { HomeMenu } from '@/features/home/home-menu';
@@ -202,6 +203,15 @@ export default function HomeScreen() {
           { bottom: Math.max(insets.bottom, Spacing.three) + BottomTabInset + Spacing.two },
         ]}>
         <View pointerEvents="box-none" style={styles.quickActions}>
+          <FeedbackOverlay
+            context={{
+              route: '/',
+              screen: 'inventory',
+              flow: 'inventory',
+              step: 'overview',
+            }}
+            placement="action-row"
+          />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lägg till med foto"

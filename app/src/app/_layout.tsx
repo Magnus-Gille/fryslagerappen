@@ -6,12 +6,12 @@ import { AuthProvider, useAuth } from '@/features/auth/auth-provider';
 import { AuthScreen } from '@/features/auth/auth-screen';
 import { CaptureAnalysisProvider } from '@/features/capture/capture-analysis-provider';
 import { appFeedbackContext } from '@/features/feedback/feedback-context';
+import { appFeedbackButtonLayout } from '@/features/feedback/feedback-layout';
 import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { HomeProvider, useHome } from '@/features/home/home-provider';
 import { HomeScreen } from '@/features/home/home-screen';
 import { InventoryProvider } from '@/features/inventory/inventory-provider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Spacing } from '@/constants/theme';
 import { runtimeConfig } from '@/lib/runtime-config';
 import { startPhoneTelemetry } from '@/lib/telemetry';
 
@@ -42,12 +42,7 @@ function AppGate() {
     hasHome: Boolean(home),
     pathname,
   });
-  const feedbackBottomOffset =
-    feedbackContext.screen === 'inventory'
-      ? 116
-      : feedbackContext.screen === 'history'
-        ? 64
-        : Spacing.three;
+  const feedbackLayout = appFeedbackButtonLayout(feedbackContext.screen);
 
   let content;
   if (runtimeConfig.hasBackend && authLoading) {
@@ -71,7 +66,7 @@ function AppGate() {
   return (
     <View style={styles.app}>
       {content}
-      <FeedbackOverlay context={feedbackContext} bottomOffset={feedbackBottomOffset} />
+      {feedbackLayout && <FeedbackOverlay context={feedbackContext} {...feedbackLayout} />}
     </View>
   );
 }

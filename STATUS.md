@@ -24,11 +24,13 @@ the private tailnet infrastructure.
   `scripts/show-phone-telemetry.sh` retrieves the latest safe fields without
   exposing the local superuser token.
 - A persistent, context-aware feedback control is available at app level and
-  inside the add-item, move-item, and Home-settings sheets. It captures the
-  current screen/flow/step at button press and sends a short typed or dictated
-  message to a private, rate-limited M5 collection; it never attaches capture
-  media or inventory contents. `scripts/show-feedback.sh` provides a
-  low-friction private reader.
+  inside the add-item, move-item, and Home-settings sheets. On the inventory
+  screen it shares the existing action row without covering Foto/Röst or item
+  controls; sheets place a compact control in their header instead of floating
+  over form actions. It captures the current screen/flow/step at button press
+  and sends a short typed or dictated message to a private, rate-limited M5
+  collection; it never attaches capture media or inventory contents.
+  `scripts/show-feedback.sh` provides a low-friction private reader.
 - A Home has one or more members and owner-configured storage places. Owners can
   add, edit, type, and archive any number of freezers, fridges, and dry-storage
   places; occupied places and the final active place cannot be archived.
@@ -136,6 +138,9 @@ the private tailnet infrastructure.
   iPhone 16e simulator.
 - The background capture status states were visually verified in a native
   Release build on the iPhone 16e simulator.
+- The non-overlapping feedback placement was regression-tested and visually
+  verified in a native Release build on the iPhone 17 Pro simulator, both in
+  the inventory action row and the add-item sheet header.
 - `npm audit --omit=dev` reports 11 moderate Expo-toolchain advisories and no
   high or critical findings. The proposed forced fix is an incompatible Expo
   downgrade and remains deferred.
