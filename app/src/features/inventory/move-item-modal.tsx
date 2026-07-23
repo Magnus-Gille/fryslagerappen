@@ -58,7 +58,15 @@ export function MoveItemModal({ item, locations, visible, onClose, onMove }: Pro
             <ThemedText style={{ color: theme.primary }}>Stäng</ThemedText>
           </Pressable>
           <ThemedText type="itemTitle">Flytta vara</ThemedText>
-          <View style={styles.spacer} />
+          <FeedbackOverlay
+            context={{
+              route: '/',
+              screen: 'inventory',
+              flow: 'move-item',
+              step: 'choose-destination',
+            }}
+            placement="header"
+          />
         </View>
         <View style={styles.content}>
           <ThemedText type="title">Vart ska {item?.name ?? 'varan'}?</ThemedText>
@@ -109,14 +117,6 @@ export function MoveItemModal({ item, locations, visible, onClose, onMove }: Pro
           )}
           {error && <ThemedText type="small" style={{ color: theme.warningText }}>{error}</ThemedText>}
         </View>
-        <FeedbackOverlay
-          context={{
-            route: '/',
-            screen: 'inventory',
-            flow: 'move-item',
-            step: 'choose-destination',
-          }}
-        />
       </SafeAreaView>
     </Modal>
   );
@@ -131,7 +131,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  spacer: { width: 52 },
   content: {
     width: '100%',
     maxWidth: MaxContentWidth,

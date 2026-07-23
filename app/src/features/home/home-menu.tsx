@@ -111,7 +111,15 @@ export function HomeMenu({ visible, onClose }: { visible: boolean; onClose: () =
             <ThemedText style={{ color: theme.primary }}>Stäng</ThemedText>
           </Pressable>
           <ThemedText type="itemTitle">Hem</ThemedText>
-          <View style={styles.spacer} />
+          <FeedbackOverlay
+            context={{
+              route: '/',
+              screen: 'home-settings',
+              flow: 'home-settings',
+              step: feedbackStep,
+            }}
+            placement="header"
+          />
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           <View style={styles.content}>
@@ -275,14 +283,6 @@ export function HomeMenu({ visible, onClose }: { visible: boolean; onClose: () =
             )}
           </View>
         </ScrollView>
-        <FeedbackOverlay
-          context={{
-            route: '/',
-            screen: 'home-settings',
-            flow: 'home-settings',
-            step: feedbackStep,
-          }}
-        />
       </SafeAreaView>
     </Modal>
   );
@@ -291,7 +291,6 @@ export function HomeMenu({ visible, onClose }: { visible: boolean; onClose: () =
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { height: 56, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  spacer: { width: 52 },
   scrollContent: { paddingBottom: Spacing.six },
   content: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', padding: Spacing.four, gap: Spacing.three },
   card: { borderWidth: 1, borderRadius: Radius.large, padding: Spacing.four, gap: Spacing.three },

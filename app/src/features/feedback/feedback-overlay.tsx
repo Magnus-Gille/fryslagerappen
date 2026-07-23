@@ -17,6 +17,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { diagnosticError, reportTelemetry } from '@/lib/telemetry';
 
 import { feedbackContextLabel, type FeedbackContext } from './feedback-context';
+import {
+  feedbackButtonPosition,
+  type FeedbackButtonPlacement,
+} from './feedback-layout';
 import { submitFeedback, type FeedbackKind } from './feedback-service';
 
 const kindOptions: { value: FeedbackKind; label: string }[] = [
@@ -29,9 +33,11 @@ const kindOptions: { value: FeedbackKind; label: string }[] = [
 export function FeedbackOverlay({
   context,
   bottomOffset = Spacing.three,
+  placement = 'floating-right',
 }: {
   context: FeedbackContext;
   bottomOffset?: number;
+  placement?: FeedbackButtonPlacement;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -95,27 +101,54 @@ export function FeedbackOverlay({
     }
   }
 
+  const headerPlacement = placement === 'header';
+  const actionRowPlacement = placement === 'action-row';
+  const inlinePlacement = headerPlacement || actionRowPlacement;
+  const feedbackButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Skicka feedback om ${feedbackContextLabel(context)}`}
+      onPress={open}
+      style={({ pressed }) => [
+        headerPlacement
+          ? styles.headerFeedbackButton
+          : actionRowPlacement
+            ? styles.actionRowFeedbackButton
+            : styles.feedbackButton,
+        feedbackButtonPosition({
+          placement,
+          bottomOffset,
+          safeBottom: Math.max(insets.bottom, Spacing.two),
+        }),
+        {
+          backgroundColor: inlinePlacement ? theme.primarySoft : theme.primaryStrong,
+        },
+        pressed && styles.pressed,
+      ]}>
+      <ThemedText
+        style={[
+          styles.feedbackIcon,
+          { color: inlinePlacement ? theme.primary : '#FFFFFF' },
+        ]}>
+        ✎
+      </ThemedText>
+      {!inlinePlacement && (
+        <ThemedText type="caption" style={styles.feedbackButtonText}>
+          Feedback
+        </ThemedText>
+      )}
+    </Pressable>
+  );
+
   return (
     <>
-      <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Skicka feedback om ${feedbackContextLabel(context)}`}
-          onPress={open}
-          style={({ pressed }) => [
-            styles.feedbackButton,
-            {
-              bottom: bottomOffset + Math.max(insets.bottom, Spacing.two),
-              backgroundColor: theme.primaryStrong,
-            },
-            pressed && styles.pressed,
-          ]}>
-          <ThemedText style={styles.feedbackIcon}>✎</ThemedText>
-          <ThemedText type="caption" style={styles.feedbackButtonText}>
-            Feedback
-          </ThemedText>
-        </Pressable>
-      </View>
+      {inlinePlacement ? (
+        feedbackButton
+      ) : (
+        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+          {feedbackButton}
+        </View>
+      )}
 
       <Modal
         transparent
@@ -220,7 +253,6 @@ export function FeedbackOverlay({
 const styles = StyleSheet.create({
   feedbackButton: {
     position: 'absolute',
-    right: Spacing.three,
     zIndex: 100,
     minHeight: 46,
     borderRadius: Radius.pill,
@@ -233,6 +265,25 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 5,
+  },
+  headerFeedbackButton: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionRowFeedbackButton: {
+    width: 54,
+    height: 54,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10253D',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 4,
   },
   feedbackIcon: { color: '#FFFFFF', fontSize: 18, lineHeight: 22 },
   feedbackButtonText: { color: '#FFFFFF' },

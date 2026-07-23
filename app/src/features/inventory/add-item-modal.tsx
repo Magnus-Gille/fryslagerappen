@@ -163,7 +163,7 @@ export function AddItemModal({
               <ThemedText style={{ color: theme.primary }}>{mode && !intent ? 'Tillbaka' : 'Stäng'}</ThemedText>
             </Pressable>
             <ThemedText type="itemTitle">Lägg till vara</ThemedText>
-            <View style={styles.headerSpacer} />
+            <FeedbackOverlay context={feedbackContext} placement="header" />
           </View>
 
           {mode === null ? (
@@ -317,7 +317,6 @@ export function AddItemModal({
               </Pressable>
             </ScrollView>
           )}
-          <FeedbackOverlay context={feedbackContext} />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
@@ -505,7 +504,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerSpacer: { width: 52 },
   chooser: {
     width: '100%',
     maxWidth: 560,
