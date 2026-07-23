@@ -22,24 +22,33 @@ import {
   selectArchivedItems,
   selectEatSoonItems,
 } from './inventory-state';
+import { selectRotationItems, type RotationItem } from './rotation';
 import { eventFromRow, type EventRow, itemFromRow, type ItemRow, locationFromRow, type LocationRow } from './remote-inventory';
-import type { AddItemInput, InventoryState, StoragePlaceInput } from './types';
+import type {
+  AddItemInput,
+  ChangeSource,
+  InventoryAuditInput,
+  InventoryState,
+  StoragePlaceInput,
+} from './types';
 
 type InventoryContextValue = {
   state: InventoryState;
   activeItems: InventoryState['items'];
   eatSoonItems: InventoryState['items'];
+  rotationItems: RotationItem[];
   archivedItems: InventoryState['items'];
   syncStatus: 'local' | 'loading' | 'synced' | 'saving' | 'error';
   addItem: (input: AddItemInput) => Promise<void>;
-  takeOne: (itemId: string) => Promise<void>;
-  removeQuantity: (itemId: string, quantity: number) => Promise<void>;
-  moveItem: (itemId: string, locationId: string) => Promise<void>;
-  consumeItem: (itemId: string) => Promise<void>;
+  takeOne: (itemId: string, comment?: string, source?: ChangeSource) => Promise<void>;
+  removeQuantity: (itemId: string, quantity: number, comment?: string, source?: ChangeSource) => Promise<void>;
+  moveItem: (itemId: string, locationId: string, comment?: string, source?: ChangeSource) => Promise<void>;
+  consumeItem: (itemId: string, comment?: string, source?: ChangeSource) => Promise<void>;
   restoreItem: (itemId: string) => Promise<void>;
   createStoragePlace: (input: StoragePlaceInput) => Promise<void>;
   updateStoragePlace: (locationId: string, input: StoragePlaceInput) => Promise<void>;
   archiveStoragePlace: (locationId: string) => Promise<void>;
+  submitAudit: (locationId: string, input: InventoryAuditInput) => Promise<void>;
 };
 
 const InventoryContext = createContext<InventoryContextValue | null>(null);
@@ -60,7 +69,10 @@ export function InventoryProvider({ children }: PropsWithChildren) {
     const [locations, items, events] = await Promise.all([
       pocketbase.collection('locations').getFullList({ filter: 'archivedAt = ""', sort: 'position' }),
       pocketbase.collection('items').getFullList({ sort: '-updated' }),
-      pocketbase.collection('inventory_events').getList(1, 100, { sort: '-created' }),
+      pocketbase.collection('inventory_events').getList(1, 100, {
+        sort: '-created',
+        expand: 'actor,fromLocation,toLocation',
+      }),
     ]);
     if (loadNumber !== latestLoad.current) return;
     dispatch({
@@ -152,6 +164,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
       state,
       activeItems: selectActiveItems(state, ''),
       eatSoonItems: selectEatSoonItems(state),
+      rotationItems: selectRotationItems(state.items),
       archivedItems: selectArchivedItems(state),
       syncStatus,
       addItem: async (payload) => {
@@ -175,40 +188,63 @@ export function InventoryProvider({ children }: PropsWithChildren) {
           throw error;
         }
       },
-      takeOne: async (itemId) => {
+      takeOne: async (itemId, comment, source = 'manual') => {
         const item = state.items.find((entry) => entry.id === itemId);
         if (!item) return;
         await runRemote(
           { type: 'quantityDecremented', itemId },
-          () => mutate(itemId, { action: 'remove', quantity: 1, expectedVersion: item.version }),
+          () => mutate(itemId, {
+            action: 'remove',
+            quantity: 1,
+            expectedVersion: item.version,
+            comment,
+            changeSource: source,
+          }),
           'take_one',
         );
       },
-      removeQuantity: async (itemId, quantity) => {
+      removeQuantity: async (itemId, quantity, comment, source = 'manual') => {
         const item = state.items.find((entry) => entry.id === itemId);
         if (!item) return;
         const amount = Math.max(0, quantity);
         await runRemote(
           { type: 'quantityRemoved', itemId, quantity: amount },
-          () => mutate(itemId, { action: 'remove', quantity: amount, expectedVersion: item.version }),
+          () => mutate(itemId, {
+            action: 'remove',
+            quantity: amount,
+            expectedVersion: item.version,
+            comment,
+            changeSource: source,
+          }),
           'remove_quantity',
         );
       },
-      moveItem: async (itemId, locationId) => {
+      moveItem: async (itemId, locationId, comment, source = 'manual') => {
         const item = state.items.find((entry) => entry.id === itemId);
         if (!item) return;
         await runRemote(
           { type: 'itemMoved', itemId, locationId },
-          () => mutate(itemId, { action: 'move', locationId, expectedVersion: item.version }),
+          () => mutate(itemId, {
+            action: 'move',
+            locationId,
+            expectedVersion: item.version,
+            comment,
+            changeSource: source,
+          }),
           'move',
         );
       },
-      consumeItem: async (itemId) => {
+      consumeItem: async (itemId, comment, source = 'manual') => {
         const item = state.items.find((entry) => entry.id === itemId);
         if (!item) return;
         await runRemote(
           { type: 'itemConsumed', itemId },
-          () => mutate(itemId, { action: 'consume', expectedVersion: item.version }),
+          () => mutate(itemId, {
+            action: 'consume',
+            expectedVersion: item.version,
+            comment,
+            changeSource: source,
+          }),
           'consume',
         );
       },
@@ -259,6 +295,46 @@ export function InventoryProvider({ children }: PropsWithChildren) {
           method: 'DELETE',
         });
         await loadRemote();
+      },
+      submitAudit: async (locationId, input) => {
+        if (!isRemote || !pocketbase) {
+          for (const row of input.rows) {
+            const item = state.items.find((entry) => entry.id === row.itemId);
+            if (!item) continue;
+            dispatch({
+              type: 'quantityAudited',
+              itemId: row.itemId,
+              quantity: row.observedQuantity,
+            });
+          }
+          for (const extra of input.extras) {
+            dispatch({
+              type: 'itemAdded',
+              payload: {
+                ...extra,
+                locationId,
+                dateSource: 'none',
+                changeSource: 'audit',
+              },
+            });
+          }
+          return;
+        }
+        setSyncStatus('saving');
+        try {
+          await pocketbase.send(`/api/iceage/locations/${locationId}/audits`, {
+            method: 'POST',
+            body: input,
+          });
+          await loadRemote();
+        } catch (error) {
+          void reportTelemetry('inventory_audit_failed', {
+            stage: 'submit',
+            ...diagnosticError(error),
+          });
+          setSyncStatus('error');
+          throw error;
+        }
       },
     }),
     [home, isRemote, loadRemote, mutate, runRemote, state, syncStatus, user],

@@ -19,11 +19,21 @@ import { addItemFeedbackContext } from '@/features/feedback/feedback-context';
 import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { useTheme } from '@/hooks/use-theme';
 
+import { BarcodeCapture } from './barcode-capture';
+import type { BarcodeProductProposal } from './barcode-service';
 import { useInventory } from './inventory-provider';
 import { storagePlaceLabel } from './storage-place';
 import type { AddItemInput } from './types';
 
-export type CaptureMode = 'photo' | 'voice' | 'manual';
+export type CaptureMode = 'photo' | 'voice' | 'barcode' | 'manual';
+type DateKind = 'best_before' | 'use_by' | 'opened' | 'estimated';
+
+function initialDateKind(intent?: CaptureIntent): DateKind {
+  if (intent?.useBy) return 'use_by';
+  if (intent?.openedOn) return 'opened';
+  if (intent?.estimatedDate || intent?.dateSource === 'estimated') return 'estimated';
+  return 'best_before';
+}
 
 type Props = {
   visible: boolean;
@@ -42,6 +52,10 @@ const manualSuggestion: Omit<AddItemInput, 'locationId'> = {
   unit: 'låda',
   frozenOn: new Date().toISOString().slice(0, 10),
   eatBefore: '',
+  bestBefore: '',
+  useBy: '',
+  openedOn: '',
+  estimatedDate: '',
   dateSource: 'manual',
   note: '',
 };
@@ -57,11 +71,16 @@ export function AddItemModal({
   const { state, addItem, removeQuantity, moveItem, consumeItem } = useInventory();
   const [mode, setMode] = useState<CaptureMode | null>(initialMode ?? null);
   const [intent, setIntent] = useState<CaptureIntent | null>(initialIntent ?? null);
+  const [barcodeProposal, setBarcodeProposal] = useState<BarcodeProductProposal | null>(null);
+  const [dateKind, setDateKind] = useState<DateKind>(() => initialDateKind(initialIntent));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [form, setForm] = useState<AddItemInput>(() =>
     initialIntent?.action === 'add'
-      ? toAddItemInput(initialIntent, state.locations)
+      ? {
+          ...toAddItemInput(initialIntent, state.locations),
+          changeSource: initialMode === 'voice' ? 'voice' : 'photo',
+        }
       : {
           ...manualSuggestion,
           locationId:
@@ -73,9 +92,11 @@ export function AddItemModal({
   function chooseMode(nextMode: CaptureMode) {
     setMode(nextMode);
     setIntent(null);
+    setBarcodeProposal(null);
     setError(undefined);
     if (nextMode === 'manual') {
       setForm({ ...manualSuggestion, locationId: state.locations[0]?.id ?? 'upstairs' });
+      setDateKind('best_before');
     }
   }
 
@@ -123,12 +144,17 @@ export function AddItemModal({
     setBusy(true);
     setError(undefined);
     try {
-      if (intent.action === 'remove') await removeQuantity(item.id, intent.quantity);
-      if (intent.action === 'consume') await consumeItem(item.id);
+      const source = mode === 'voice' ? 'voice' : 'photo';
+      if (intent.action === 'remove') {
+        await removeQuantity(item.id, intent.quantity, intent.transcript ?? undefined, source);
+      }
+      if (intent.action === 'consume') {
+        await consumeItem(item.id, intent.transcript ?? undefined, source);
+      }
       if (intent.action === 'move') {
         const destinationId = findLocationId(intent.destinationName, state.locations);
         if (!destinationId) throw new Error('Kunde inte hitta målplatsen.');
-        await moveItem(item.id, destinationId);
+        await moveItem(item.id, destinationId, intent.transcript ?? undefined, source);
       }
       onCaptureHandled?.();
       close();
@@ -142,6 +168,7 @@ export function AddItemModal({
   function close() {
     setMode(null);
     setIntent(null);
+    setBarcodeProposal(null);
     setError(undefined);
     onClose();
   }
@@ -168,7 +195,24 @@ export function AddItemModal({
 
           {mode === null ? (
             <CaptureChooser onChoose={chooseMode} />
-          ) : mode !== 'manual' && intent === null ? (
+          ) : mode === 'barcode' && !barcodeProposal ? (
+            <BarcodeCapture
+              onResolved={(product) => {
+                setBarcodeProposal(product);
+                setForm({
+                  ...manualSuggestion,
+                  name: product.name,
+                  category: product.category,
+                  unit: product.unit,
+                  frozenOn: '',
+                  dateSource: 'none',
+                  barcode: product.barcode,
+                  changeSource: 'barcode',
+                  locationId: state.locations[0]?.id ?? 'upstairs',
+                });
+              }}
+            />
+          ) : mode !== 'manual' && mode !== 'barcode' && intent === null ? (
             <CaptureFlow mode={mode} onSubmitted={close} />
           ) : intent && intent.action !== 'add' ? (
             <CapturedChangeConfirmation
@@ -251,23 +295,65 @@ export function AddItemModal({
                 </View>
               </Field>
 
+              <Field label="Datumtyp">
+                <View style={styles.chipRow}>
+                  {([
+                    ['best_before', 'Bäst före'],
+                    ['use_by', 'Sista förbrukningsdag'],
+                    ['opened', 'Öppnad'],
+                    ['estimated', 'Uppskattat'],
+                  ] as const).map(([kind, label]) => (
+                    <ChoiceChip
+                      key={kind}
+                      label={label}
+                      selected={dateKind === kind}
+                      onPress={() => {
+                        setDateKind(kind);
+                        update('dateSource', kind === 'estimated' ? 'estimated' : 'manual');
+                      }}
+                    />
+                  ))}
+                </View>
+              </Field>
+
               <View style={styles.twoColumns}>
+                <Field label="Datum" style={styles.column}>
+                  <TextInput
+                    accessibilityLabel="Valt datum"
+                    value={
+                      dateKind === 'best_before'
+                        ? form.bestBefore
+                        : dateKind === 'use_by'
+                          ? form.useBy
+                          : dateKind === 'opened'
+                            ? form.openedOn
+                            : form.estimatedDate
+                    }
+                    onChangeText={(value) => {
+                      const key =
+                        dateKind === 'best_before'
+                          ? 'bestBefore'
+                          : dateKind === 'use_by'
+                            ? 'useBy'
+                            : dateKind === 'opened'
+                              ? 'openedOn'
+                              : 'estimatedDate';
+                      update(key, value);
+                      if (value && form.dateSource === 'none') {
+                        update('dateSource', dateKind === 'estimated' ? 'estimated' : 'manual');
+                      }
+                    }}
+                    placeholder="ÅÅÅÅ-MM-DD · valfritt"
+                    placeholderTextColor={theme.textTertiary}
+                    style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+                  />
+                </Field>
                 <Field label="Lagrad sedan" style={styles.column}>
                   <TextInput
                     accessibilityLabel="Lagrad sedan datum"
                     value={form.frozenOn}
                     onChangeText={(value) => update('frozenOn', value)}
                     placeholder="ÅÅÅÅ-MM-DD"
-                    placeholderTextColor={theme.textTertiary}
-                    style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-                  />
-                </Field>
-                <Field label="Prioritera före" style={styles.column}>
-                  <TextInput
-                    accessibilityLabel="Prioritera före datum"
-                    value={form.eatBefore}
-                    onChangeText={(value) => update('eatBefore', value)}
-                    placeholder="Valfritt"
                     placeholderTextColor={theme.textTertiary}
                     style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                   />
@@ -374,10 +460,16 @@ function CaptureChooser({ onChoose }: { onChoose: (mode: CaptureMode) => void })
         </ThemedText>
       </View>
       <CaptureButton
+        emoji="▥"
+        title="Skanna streckkod"
+        description="Direkt träff utan AI"
+        primary
+        onPress={() => onChoose('barcode')}
+      />
+      <CaptureButton
         emoji="📷"
         title="Ta ett foto"
         description="Snabbast när etiketten syns"
-        primary
         onPress={() => onChoose('photo')}
       />
       <CaptureButton

@@ -16,7 +16,12 @@ export type ItemRow = {
   location: string;
   frozenOn: string;
   eatBefore: string;
+  bestBefore: string;
+  useBy: string;
+  openedOn: string;
+  estimatedDate: string;
   dateSource: FreezerItem['dateSource'];
+  barcode: string;
   note: string;
   status: FreezerItem['status'];
   created: string;
@@ -29,6 +34,18 @@ export type EventRow = {
   item: string;
   eventType: InventoryEvent['type'];
   created: string;
+  quantityDelta?: number;
+  quantityBefore?: number;
+  quantityAfter?: number;
+  comment?: string;
+  source?: InventoryEvent['source'];
+  fromLocation?: string;
+  toLocation?: string;
+  expand?: {
+    actor?: { displayName?: string };
+    fromLocation?: { name?: string };
+    toLocation?: { name?: string };
+  };
 };
 
 export function itemVisual(category: string) {
@@ -72,7 +89,12 @@ export function itemFromRow(row: ItemRow): FreezerItem {
     locationId: row.location,
     frozenOn: row.frozenOn || undefined,
     eatBefore: row.eatBefore || undefined,
+    bestBefore: row.bestBefore || undefined,
+    useBy: row.useBy || undefined,
+    openedOn: row.openedOn || undefined,
+    estimatedDate: row.estimatedDate || undefined,
     dateSource: row.dateSource,
+    barcode: row.barcode || undefined,
     note: row.note || undefined,
     status: row.status,
     createdAt: row.created,
@@ -88,5 +110,15 @@ export function eventFromRow(row: EventRow): InventoryEvent {
     itemId: row.item,
     type: row.eventType,
     occurredAt: row.created,
+    quantityDelta: row.quantityDelta,
+    quantityBefore: row.quantityBefore,
+    quantityAfter: row.quantityAfter,
+    comment: row.comment || undefined,
+    source: row.source,
+    actorName: row.expand?.actor?.displayName || undefined,
+    fromLocationId: row.fromLocation || undefined,
+    fromLocationName: row.expand?.fromLocation?.name || undefined,
+    toLocationId: row.toLocation || undefined,
+    toLocationName: row.expand?.toLocation?.name || undefined,
   };
 }

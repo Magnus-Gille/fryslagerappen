@@ -54,6 +54,17 @@ describe('contextual feedback', () => {
     ).toBe('Lägg till vara · Kontrollera förslag');
   });
 
+  it('labels audit feedback with a friendly flow and step name', () => {
+    expect(
+      feedbackContextLabel({
+        route: '/',
+        screen: 'inventory',
+        flow: 'inventory-audit',
+        step: 'review',
+      }),
+    ).toBe('Inventera plats · Granska');
+  });
+
   it('submits only bounded feedback and allowlisted context fields', async () => {
     const sender = jest.fn<() => Promise<{ accepted: boolean }>>().mockResolvedValue({
       accepted: true,

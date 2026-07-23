@@ -155,4 +155,29 @@ describe('inventory state', () => {
       status: 'active',
     });
   });
+
+  it('applies an audited quantity exactly, including newly found portions', () => {
+    const initial = createInventoryState();
+    const berries = initial.items.find((item) => item.name === 'Blåbär')!;
+
+    const audited = inventoryReducer(initial, {
+      type: 'quantityAudited',
+      itemId: berries.id,
+      quantity: berries.quantity + 2,
+    });
+
+    expect(audited.items.find((item) => item.id === berries.id)).toMatchObject({
+      quantity: berries.quantity + 2,
+      status: 'active',
+      version: berries.version + 1,
+    });
+    expect(audited.events[0]).toMatchObject({
+      type: 'audited',
+      itemId: berries.id,
+      quantityBefore: berries.quantity,
+      quantityAfter: berries.quantity + 2,
+      quantityDelta: 2,
+      source: 'audit',
+    });
+  });
 });

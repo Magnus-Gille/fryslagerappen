@@ -7,6 +7,8 @@ const collections = {
   invitations: "household_invitations",
   quotas: "extraction_quotas",
   feedback: "user_feedback",
+  productMappings: "product_mappings",
+  audits: "inventory_audits",
 };
 
 const intentSchema = {
@@ -21,6 +23,10 @@ const intentSchema = {
     destinationName: { type: ["string", "null"] },
     frozenOn: { type: ["string", "null"] },
     eatBefore: { type: ["string", "null"] },
+    bestBefore: { type: ["string", "null"] },
+    useBy: { type: ["string", "null"] },
+    openedOn: { type: ["string", "null"] },
+    estimatedDate: { type: ["string", "null"] },
     dateSource: { type: "string", enum: ["manual", "label", "estimated", "none"] },
     note: { type: ["string", "null"] },
     transcript: { type: ["string", "null"] },
@@ -29,7 +35,8 @@ const intentSchema = {
   },
   required: [
     "action", "name", "category", "quantity", "unit", "locationName", "destinationName",
-    "frozenOn", "eatBefore", "dateSource", "note", "transcript", "confidence", "uncertainFields",
+    "frozenOn", "eatBefore", "bestBefore", "useBy", "openedOn", "estimatedDate",
+    "dateSource", "note", "transcript", "confidence", "uncertainFields",
   ],
   additionalProperties: false,
 };
@@ -57,6 +64,12 @@ const allowedTelemetryEvents = [
   "capture_extraction_started",
   "capture_extraction_succeeded",
   "capture_extraction_failed",
+  "barcode_scan_started",
+  "barcode_lookup_succeeded",
+  "barcode_lookup_failed",
+  "inventory_audit_started",
+  "inventory_audit_succeeded",
+  "inventory_audit_failed",
   "feedback_opened",
   "feedback_succeeded",
   "feedback_failed",
@@ -209,6 +222,22 @@ function number(value, label, min, max) {
   return result;
 }
 
+function barcode(value) {
+  const result = String(value || "").trim();
+  if (result && !/^[0-9]{8,14}$/.test(result)) {
+    throw new BadRequestError("Ogiltig streckkod.");
+  }
+  return result;
+}
+
+function changeSource(value, fallback) {
+  const result = String(value || fallback || "manual");
+  if (!["manual", "photo", "voice", "barcode", "audit", "system"].includes(result)) {
+    throw new BadRequestError("Ogiltig ändringskälla.");
+  }
+  return result;
+}
+
 function household(e) {
   const householdId = e.auth.getString("household");
   if (!householdId) throw new ForbiddenError("Kontot tillhör inget hem.");
@@ -245,13 +274,84 @@ function location(app, locationId, householdId) {
   return record;
 }
 
-function event(app, householdId, itemId, eventType, actorId) {
+function event(app, householdId, itemId, eventType, actorId, details) {
+  const data = details || {};
   const record = new Record(app.findCollectionByNameOrId(collections.events));
   record.set("household", householdId);
   record.set("item", itemId);
   record.set("eventType", eventType);
   record.set("actor", actorId);
+  record.set("quantityDelta", Number(data.quantityDelta || 0));
+  record.set("quantityBefore", Number(data.quantityBefore || 0));
+  record.set("quantityAfter", Number(data.quantityAfter || 0));
+  record.set("comment", optionalText(data.comment, 500));
+  record.set("source", changeSource(data.source, "system"));
+  record.set("fromLocation", String(data.fromLocation || ""));
+  record.set("toLocation", String(data.toLocation || ""));
+  record.set("audit", String(data.audit || ""));
   app.save(record);
+}
+
+function productCategory(tags) {
+  const value = (Array.isArray(tags) ? tags : []).join(" ").toLowerCase();
+  if (/(konserv|canned|preserved)/.test(value)) return "Konserver";
+  if (/(pasta|rice|oat|flour|cereal|dry)/.test(value)) return "Torrvaror";
+  if (/(milk|dairy|cheese|yogurt)/.test(value)) return "Mejeri";
+  if (/(fish|seafood)/.test(value)) return "Fisk";
+  if (/(ice-cream|dessert)/.test(value)) return "Glass & dessert";
+  if (/(fruit|berries|berry)/.test(value)) return "Frukt & bär";
+  return "Övrigt";
+}
+
+function lookupProduct(barcodeValue) {
+  const code = barcode(barcodeValue);
+  const baseUrl = ($os.getenv("ICEAGE_PRODUCT_LOOKUP_URL") ||
+    "https://world.openfoodfacts.org/api/v2/product").replace(/\/+$/, "");
+  const response = $http.send({
+    url: baseUrl + "/" + code +
+      "?fields=product_name_sv,product_name,categories_tags,quantity,image_front_small_url",
+    method: "GET",
+    headers: {
+      "user-agent": "Iceage household inventory/1.0 (https://github.com/Magnus-Gille/fryslagerappen)",
+    },
+    timeout: 8,
+  });
+  const product = response.json && response.json.product;
+  if (response.statusCode !== 200 || !response.json || response.json.status !== 1 || !product) {
+    throw new ApiError(404, "Produkten finns inte i produktregistret.");
+  }
+  const name = optionalText(product.product_name_sv || product.product_name, 120);
+  if (!name) throw new ApiError(404, "Produkten saknar ett användbart namn.");
+  const imageUrl = optionalText(product.image_front_small_url, 500);
+  return {
+    barcode: code,
+    name: name,
+    category: productCategory(product.categories_tags),
+    unit: "st",
+    imageUrl: /^https?:\/\//.test(imageUrl) ? imageUrl : "",
+  };
+}
+
+function upsertProductMapping(app, householdId, actorId, product) {
+  let mapping;
+  try {
+    mapping = app.findFirstRecordByFilter(
+      collections.productMappings,
+      "household = {:household} && barcode = {:barcode}",
+      { household: householdId, barcode: product.barcode },
+    );
+  } catch (_) {
+    mapping = new Record(app.findCollectionByNameOrId(collections.productMappings));
+    mapping.set("household", householdId);
+    mapping.set("barcode", product.barcode);
+  }
+  mapping.set("name", text(product.name, "namn", 120));
+  mapping.set("category", text(product.category, "kategori", 80));
+  mapping.set("unit", text(product.unit, "enhet", 40));
+  mapping.set("imageUrl", optionalText(product.imageUrl, 500));
+  mapping.set("confirmedBy", actorId);
+  app.save(mapping);
+  return mapping;
 }
 
 function publicRecord(record) {
@@ -345,12 +445,16 @@ module.exports = {
   optionalText,
   date,
   number,
+  barcode,
+  changeSource,
   household,
   requireHome,
   requireHomeOwner,
   storageType,
   location,
   event,
+  lookupProduct,
+  upsertProductMapping,
   publicRecord,
   consumeTelemetryQuota,
   telemetry,

@@ -6,6 +6,7 @@ import type {
   InventoryEventType,
   InventoryState,
 } from './types';
+import { selectRotationItems } from './rotation';
 
 function cloneItems() {
   return seedItems.map((item) => ({ ...item }));
@@ -19,12 +20,19 @@ export function createInventoryState(): InventoryState {
   };
 }
 
-function createEvent(itemId: string, type: InventoryEventType, occurredAt: string): InventoryEvent {
+function createEvent(
+  itemId: string,
+  type: InventoryEventType,
+  occurredAt: string,
+  details: Partial<InventoryEvent> = {},
+): InventoryEvent {
   return {
     id: `event-${itemId}-${type}-${occurredAt}`,
     itemId,
     type,
     occurredAt,
+    source: 'manual',
+    ...details,
   };
 }
 
@@ -55,24 +63,40 @@ function updateItem(
   itemId: string,
   type: InventoryEventType,
   update: (item: FreezerItem) => FreezerItem,
+  eventDetails: Partial<InventoryEvent> = {},
 ): InventoryState {
   const occurredAt = new Date().toISOString();
   let changed = false;
+  let previousItem: FreezerItem | undefined;
+  let nextItem: FreezerItem | undefined;
   const items = state.items.map((item) => {
     if (item.id !== itemId) return item;
     changed = true;
-    return {
+    previousItem = item;
+    nextItem = {
       ...update(item),
       updatedAt: occurredAt,
       version: item.version + 1,
     };
+    return nextItem;
   });
 
   if (!changed) return state;
   return {
     ...state,
     items,
-    events: [createEvent(itemId, type, occurredAt), ...state.events],
+    events: [
+      createEvent(itemId, type, occurredAt, {
+        quantityBefore: previousItem?.quantity,
+        quantityAfter: nextItem?.quantity,
+        quantityDelta:
+          previousItem && nextItem ? nextItem.quantity - previousItem.quantity : undefined,
+        fromLocationId: previousItem?.locationId,
+        toLocationId: nextItem?.locationId,
+        ...eventDetails,
+      }),
+      ...state.events,
+    ],
   };
 }
 
@@ -95,7 +119,16 @@ export function inventoryReducer(state: InventoryState, action: InventoryAction)
       return {
         ...state,
         items: [item, ...state.items],
-        events: [createEvent(item.id, 'created', occurredAt), ...state.events],
+        events: [
+          createEvent(item.id, 'created', occurredAt, {
+            quantityBefore: 0,
+            quantityAfter: item.quantity,
+            quantityDelta: item.quantity,
+            toLocationId: item.locationId,
+            source: action.payload.changeSource ?? 'manual',
+          }),
+          ...state.events,
+        ],
       };
     }
     case 'quantityDecremented':
@@ -110,6 +143,18 @@ export function inventoryReducer(state: InventoryState, action: InventoryAction)
         quantity: Math.max(0, item.quantity - action.quantity),
         status: item.quantity <= action.quantity ? 'consumed' : item.status,
       }));
+    case 'quantityAudited':
+      return updateItem(
+        state,
+        action.itemId,
+        'audited',
+        (item) => ({
+          ...item,
+          quantity: Math.max(0, action.quantity),
+          status: action.quantity <= 0 ? 'consumed' : 'active',
+        }),
+        { source: 'audit' },
+      );
     case 'itemMoved':
       return updateItem(state, action.itemId, 'moved', (item) => ({
         ...item,
@@ -160,17 +205,7 @@ export function selectActiveItems(state: InventoryState, query: string, location
 }
 
 export function selectEatSoonItems(state: InventoryState, referenceDate = new Date()) {
-  const horizon = new Date(referenceDate);
-  horizon.setUTCDate(horizon.getUTCDate() + 30);
-
-  return state.items
-    .filter(
-      (item) =>
-        item.status === 'active' &&
-        item.eatBefore !== undefined &&
-        new Date(`${item.eatBefore}T00:00:00.000Z`) <= horizon,
-    )
-    .sort((left, right) => left.eatBefore!.localeCompare(right.eatBefore!));
+  return selectRotationItems(state.items, referenceDate).map(({ item }) => item);
 }
 
 export function selectArchivedItems(state: InventoryState) {
