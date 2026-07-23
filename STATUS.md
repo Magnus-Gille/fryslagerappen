@@ -111,6 +111,13 @@ the private tailnet infrastructure.
   suite. M5 release `20260723090753` and its dedicated extractor service are
   healthy, and a real simulator launch produced correlated `app_started` and
   `backend_probe_succeeded` events.
+- Contextual feedback ingestion, redaction, private collection rules, ignored
+  unknown fields, authenticated Home/user association, and the ten-attempts/hour
+  source-IP quota pass the PocketBase integration suite. M5 release
+  `20260723102958` has migration `1784743000_add_contextual_feedback.js` applied
+  and is healthy. A live anonymous smoke message arrived with
+  `authentication / sign-in / credentials` context through
+  `scripts/show-feedback.sh`; the exact synthetic record was then removed.
 - The telemetry-enabled company-team Release build is installed on the paired
   iPhone as version 1.0.0 (bundle version 1). CoreDevice verified the installed
   app; automatic foreground launch was denied only because the phone was locked.
@@ -120,6 +127,9 @@ the private tailnet infrastructure.
 - Version 1.0.0 build 260723094432, containing the background capture flow and
   warm M5 extractor integration, was archived with the company team and accepted
   by App Store Connect for TestFlight processing.
+- Version 1.0.0 build 260723103149, containing the persistent contextual-feedback
+  control, was archived with the company team and accepted by App Store Connect
+  for TestFlight processing and automatic internal distribution.
 - The TestFlight-ready configuration was verified by Expo Doctor 20/20, ESLint,
   TypeScript, 10 Jest suites / 43 tests, a static web export, a signed device
   archive, and a native Release build launched and visually inspected in the
@@ -144,7 +154,8 @@ the private tailnet infrastructure.
 
 ## Next step
 
-Deploy the contextual-feedback migration and route to M5, merge the reviewed
-app change, and distribute its TestFlight build to `Familjen`. Then use
-`./scripts/show-feedback.sh` together with `./scripts/show-phone-telemetry.sh`
-to ground the next UX iteration in comments and timings from Magnus and Sara.
+Wait for Apple to finish processing build 260723103149 and let automatic
+distribution deliver it to `Familjen`. Then have Magnus and Sara update in
+TestFlight and use the persistent control during normal kitchen use. Read
+comments with `./scripts/show-feedback.sh` and correlate technical symptoms
+with `./scripts/show-phone-telemetry.sh`.
