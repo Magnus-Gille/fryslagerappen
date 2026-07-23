@@ -4,6 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+import { assessRotation } from './rotation';
 import { storagePlaceLabel } from './storage-place';
 import type { FreezerItem, StoragePlace } from './types';
 
@@ -31,7 +32,18 @@ function displayDate(value?: string) {
 
 export function InventoryCard({ item, location, onTakeOne, onMove, onConsume }: Props) {
   const theme = useTheme();
-  const date = displayDate(item.eatBefore);
+  const rotation = assessRotation(item);
+  const date = displayDate(rotation.priorityDate ?? item.openedOn);
+  const dateLabel =
+    rotation.dateType === 'use_by'
+      ? 'Sista förbrukningsdag'
+      : rotation.dateType === 'best_before'
+        ? 'Bäst före'
+        : rotation.dateType === 'opened'
+          ? 'Öppnad'
+          : rotation.dateType === 'estimated'
+            ? 'Uppskattat'
+            : sourceLabels[item.dateSource];
 
   return (
     <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.surface }]}>
@@ -60,7 +72,7 @@ export function InventoryCard({ item, location, onTakeOne, onMove, onConsume }: 
 
         {date && (
           <ThemedText type="caption" themeColor="textTertiary">
-            {sourceLabels[item.dateSource]} · kontrollera varan själv
+            {dateLabel} · {rotation.reason}
           </ThemedText>
         )}
 

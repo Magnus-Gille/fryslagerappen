@@ -19,6 +19,7 @@ test_root="$(mktemp -d "${TMPDIR:-/tmp}/iceage-backend-test.XXXXXX")"
 server_pid=""
 inference_pid=""
 cleanup() {
+  local status=$?
   if [[ -n "$server_pid" ]]; then
     kill "$server_pid" 2>/dev/null || true
     wait "$server_pid" 2>/dev/null || true
@@ -27,7 +28,13 @@ cleanup() {
     kill "$inference_pid" 2>/dev/null || true
     wait "$inference_pid" 2>/dev/null || true
   fi
+  if [[ "$status" -ne 0 ]]; then
+    printf 'Backend contract test failed (exit %s).\n' "$status" >&2
+    [[ -f "$test_root/server.log" ]] && tail -80 "$test_root/server.log" >&2
+    [[ -f "$test_root/inference.log" ]] && tail -40 "$test_root/inference.log" >&2
+  fi
   rm -rf -- "$test_root"
+  return "$status"
 }
 trap cleanup EXIT
 
@@ -51,6 +58,16 @@ cp "$repo_root/scripts/backend-test-migrations/1784737000_verify_storage_upgrade
   --automigrate=false >/dev/null
 cp "$repo_root/backend/pb_migrations/1784740000_model_homes_and_storage_types.js" "$upgrade_migrations/"
 cp "$repo_root/scripts/backend-test-migrations/1784741000_verify_home_model.js" "$upgrade_migrations/"
+"$pocketbase_bin" migrate up \
+  --dir "$test_root/upgrade-data" \
+  --migrationsDir "$upgrade_migrations" \
+  --hooksDir "$repo_root/backend/pb_hooks" \
+  --automigrate=false >/dev/null
+cp "$repo_root/backend/pb_migrations/1784742000_allow_oauth2_user_creation.js" "$upgrade_migrations/"
+cp "$repo_root/backend/pb_migrations/1784743000_add_contextual_feedback.js" "$upgrade_migrations/"
+cp "$repo_root/scripts/backend-test-migrations/1784744000_seed_legacy_inventory_item.js" "$upgrade_migrations/"
+cp "$repo_root/backend/pb_migrations/1784745000_add_inventory_workflows.js" "$upgrade_migrations/"
+cp "$repo_root/scripts/backend-test-migrations/1784746000_verify_inventory_workflows.js" "$upgrade_migrations/"
 "$pocketbase_bin" migrate up \
   --dir "$test_root/upgrade-data" \
   --migrationsDir "$upgrade_migrations" \
@@ -90,6 +107,7 @@ test_admin_password="$(openssl rand -base64 24 | tr -d '\n')Aa1!"
 ICEAGE_WHISPER_URL="http://127.0.0.1:$inference_port/inference" \
 ICEAGE_LLM_BASE_URL="http://127.0.0.1:$inference_port/v1" \
 ICEAGE_EXTRACTION_MODEL='fake-inference' \
+ICEAGE_PRODUCT_LOOKUP_URL="http://127.0.0.1:$inference_port/api/v2/product" \
 ICEAGE_APPLE_CLIENT_ID='ai.gille.fryslagerappen' \
 ICEAGE_APPLE_CLIENT_SECRET='test-only-client-secret' \
   "$pocketbase_bin" serve \
@@ -265,7 +283,7 @@ occupied_archive_status="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
   -H "authorization: Bearer $owner_token")"
 test "$occupied_archive_status" = '400'
 
-for collection in households locations items inventory_events household_invitations extraction_quotas user_feedback; do
+for collection in households locations items inventory_events household_invitations extraction_quotas user_feedback product_mappings inventory_audits; do
   direct_create_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
     "$base_url/api/collections/$collection/records" \
     -H "authorization: Bearer $owner_token" \
@@ -356,6 +374,59 @@ outsider_items="$(curl -fsS "$base_url/api/collections/items/records" \
   -H "authorization: Bearer $outsider_token" | jq -r .totalItems)"
 test "$outsider_items" = '0'
 
+barcode_lookup="$(curl -fsS "$base_url/api/iceage/barcodes/07350001234567" \
+  -H "authorization: Bearer $owner_token")"
+test "$(printf '%s' "$barcode_lookup" | jq -r .source)" = 'open_food_facts'
+test "$(printf '%s' "$barcode_lookup" | jq -r .product.name)" = 'Krossade tomater'
+barcode_item_payload="$(jq -cn --arg location "$location_id" \
+  '{name:"Krossade tomater",category:"Konserver",quantity:3,unit:"burkar",locationId:$location,dateSource:"label",bestBefore:"2028-02-01",barcode:"07350001234567",changeSource:"barcode"}')"
+barcode_item="$(curl -fsS -X POST "$base_url/api/iceage/items" \
+  -H "authorization: Bearer $owner_token" \
+  -H 'content-type: application/json' \
+  --data "$barcode_item_payload" | jq -c .item)"
+barcode_item_id="$(printf '%s' "$barcode_item" | jq -r .id)"
+test "$(printf '%s' "$barcode_item" | jq -r .bestBefore)" = '2028-02-01'
+cached_barcode_lookup="$(curl -fsS "$base_url/api/iceage/barcodes/07350001234567" \
+  -H "authorization: Bearer $member_token")"
+test "$(printf '%s' "$cached_barcode_lookup" | jq -r .source)" = 'home'
+
+audit_payload="$(jq -cn --arg item "$barcode_item_id" \
+  '{rows:[{itemId:$item,expectedVersion:1,observedQuantity:1,note:"Två burkar saknades"}],extras:[{name:"Havregryn",category:"Torrvaror",quantity:2,unit:"paket",note:"Hittades bakom tomaterna"}]}')"
+audit_result="$(curl -fsS -X POST "$base_url/api/iceage/locations/$location_id/audits" \
+  -H "authorization: Bearer $member_token" \
+  -H 'content-type: application/json' \
+  --data "$audit_payload")"
+test "$(printf '%s' "$audit_result" | jq -r .audit.changeCount)" = '2'
+test "$(curl -fsS "$base_url/api/collections/items/records/$barcode_item_id" \
+  -H "authorization: Bearer $owner_token" | jq -r .quantity)" = '1'
+rich_event="$(curl -fsS --get "$base_url/api/collections/inventory_events/records" \
+  -H "authorization: Bearer $owner_token" \
+  --data-urlencode "filter=item='$barcode_item_id' && source='audit'" \
+  --data-urlencode 'sort=-created' | jq -c '.items[0]')"
+test "$(printf '%s' "$rich_event" | jq -r .quantityDelta)" = '-2'
+test "$(printf '%s' "$rich_event" | jq -r .quantityBefore)" = '3'
+test "$(printf '%s' "$rich_event" | jq -r .quantityAfter)" = '1'
+test "$(printf '%s' "$rich_event" | jq -r .comment)" = 'Två burkar saknades'
+
+items_before_conflict="$(curl -fsS "$base_url/api/collections/items/records" \
+  -H "authorization: Bearer $owner_token" | jq -r .totalItems)"
+conflicting_audit_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/locations/$location_id/audits" \
+  -H "authorization: Bearer $owner_token" \
+  -H 'content-type: application/json' \
+  --data "{\"rows\":[{\"itemId\":\"$barcode_item_id\",\"expectedVersion\":1,\"observedQuantity\":0}],\"extras\":[{\"name\":\"Får inte sparas\",\"category\":\"Torrvaror\",\"quantity\":1,\"unit\":\"st\"}]}")"
+test "$conflicting_audit_status" = '409'
+items_after_conflict="$(curl -fsS "$base_url/api/collections/items/records" \
+  -H "authorization: Bearer $owner_token" | jq -r .totalItems)"
+test "$items_after_conflict" = "$items_before_conflict"
+
+outsider_audit_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/locations/$location_id/audits" \
+  -H "authorization: Bearer $outsider_token" \
+  -H 'content-type: application/json' \
+  --data '{"rows":[],"extras":[] }')"
+test "$outsider_audit_status" = '403'
+
 empty_extract_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
   "$base_url/api/iceage/extract" \
   -H "authorization: Bearer $owner_token" \
@@ -417,5 +488,5 @@ test "$remaining_members" = '1'
 
 event_count="$(curl -fsS "$base_url/api/collections/inventory_events/records" \
   -H "authorization: Bearer $owner_token" | jq -r .totalItems)"
-test "$event_count" = '2'
-printf 'backend=ok telemetry=sanitized feedback=private feedbackQuota=429 homeModel=5 configurableLocations=ok members=ok legacyUpgrade=ok itemVersion=2 conflict=409 memberItems=1 memberInvite=403 outsiderItems=0 directWrites=403 photoVoiceExtraction=ok quota=429 userWrites=403 events=2\n'
+test "$event_count" -ge '5'
+printf 'backend=ok telemetry=sanitized feedback=private feedbackQuota=429 homeModel=5 configurableLocations=ok members=ok legacyUpgrade=ok itemVersion=2 conflict=409 memberItems=1 memberInvite=403 outsiderItems=0 directWrites=403 barcode=home-cache audit=atomic richEvents=ok photoVoiceExtraction=ok quota=429 userWrites=403\n'

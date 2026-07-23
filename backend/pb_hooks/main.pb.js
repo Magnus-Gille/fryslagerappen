@@ -303,6 +303,60 @@ routerAdd("POST", "/api/iceage/invites/accept", (e) => {
   return e.json(200, { accepted: true });
 }, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
 
+routerAdd("GET", "/api/iceage/barcodes/{barcode}", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const householdId = lib.household(e);
+  const barcode = lib.barcode(e.request.pathValue("barcode"));
+  let mapping = null;
+  try {
+    mapping = e.app.findFirstRecordByFilter(
+      lib.collections.productMappings,
+      "household = {:household} && barcode = {:barcode}",
+      { household: householdId, barcode: barcode },
+    );
+  } catch (_) {
+    // A miss falls through to the public product catalogue.
+  }
+  if (mapping) {
+    return e.json(200, {
+      source: "home",
+      product: {
+        barcode: mapping.getString("barcode"),
+        name: mapping.getString("name"),
+        category: mapping.getString("category"),
+        unit: mapping.getString("unit"),
+        imageUrl: mapping.getString("imageUrl") || undefined,
+      },
+    });
+  }
+  return e.json(200, {
+    source: "open_food_facts",
+    product: lib.lookupProduct(barcode),
+  });
+}, $apis.requireAuth("users"));
+
+routerAdd("POST", "/api/iceage/barcodes/{barcode}/confirm", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const householdId = lib.household(e);
+  const body = lib.body(e);
+  const mapping = lib.upsertProductMapping(e.app, householdId, e.auth.id, {
+    barcode: lib.barcode(e.request.pathValue("barcode")),
+    name: body.name,
+    category: body.category,
+    unit: body.unit,
+    imageUrl: body.imageUrl,
+  });
+  return e.json(200, {
+    product: {
+      barcode: mapping.getString("barcode"),
+      name: mapping.getString("name"),
+      category: mapping.getString("category"),
+      unit: mapping.getString("unit"),
+      imageUrl: mapping.getString("imageUrl") || undefined,
+    },
+  });
+}, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
+
 routerAdd("POST", "/api/iceage/items", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
   const householdId = lib.household(e);
@@ -313,6 +367,16 @@ routerAdd("POST", "/api/iceage/items", (e) => {
   if (!["manual", "label", "estimated", "none"].includes(dateSource)) {
     throw new BadRequestError("Ogiltig datumkälla.");
   }
+  const barcode = lib.barcode(body.barcode);
+  const source = lib.changeSource(body.changeSource, "manual");
+  if (source === "barcode" && !barcode) throw new BadRequestError("Streckkoden saknas.");
+  const bestBefore = lib.date(body.bestBefore);
+  const useBy = lib.date(body.useBy);
+  const openedOn = lib.date(body.openedOn);
+  const estimatedDate = lib.date(body.estimatedDate);
+  const legacyDate = lib.date(
+    body.eatBefore || useBy || bestBefore || estimatedDate,
+  );
 
   let itemResult = null;
   e.app.runInTransaction((txApp) => {
@@ -324,15 +388,36 @@ routerAdd("POST", "/api/iceage/items", (e) => {
     item.set("quantity", lib.number(body.quantity, "antal", 0.01, 100000));
     item.set("unit", lib.text(body.unit, "enhet", 40));
     item.set("frozenOn", lib.date(body.frozenOn));
-    item.set("eatBefore", lib.date(body.eatBefore));
+    item.set("eatBefore", legacyDate);
+    item.set("bestBefore", bestBefore);
+    item.set("useBy", useBy);
+    item.set("openedOn", openedOn);
+    item.set("estimatedDate", estimatedDate);
     item.set("dateSource", dateSource);
+    item.set("barcode", barcode);
     item.set("note", lib.optionalText(body.note, 500));
     item.set("status", "active");
     item.set("createdBy", e.auth.id);
     item.set("updatedBy", e.auth.id);
     item.set("version", 1);
     txApp.save(item);
-    lib.event(txApp, householdId, item.id, "created", e.auth.id);
+    if (barcode) {
+      lib.upsertProductMapping(txApp, householdId, e.auth.id, {
+        barcode: barcode,
+        name: item.getString("name"),
+        category: item.getString("category"),
+        unit: item.getString("unit"),
+        imageUrl: body.imageUrl,
+      });
+    }
+    lib.event(txApp, householdId, item.id, "created", e.auth.id, {
+      quantityBefore: 0,
+      quantityAfter: item.getFloat("quantity"),
+      quantityDelta: item.getFloat("quantity"),
+      comment: body.comment || (source === "voice" ? body.note : ""),
+      source: source,
+      toLocation: locationId,
+    });
     itemResult = lib.publicRecord(item);
   });
   return e.json(201, { item: itemResult });
@@ -343,6 +428,8 @@ routerAdd("POST", "/api/iceage/items/{id}/mutate", (e) => {
   const householdId = lib.household(e);
   const body = lib.body(e);
   const action = String(body.action || "");
+  const source = lib.changeSource(body.changeSource, "manual");
+  const comment = lib.optionalText(body.comment, 500);
   const expectedVersion = lib.number(body.expectedVersion, "version", 1, 1000000000);
   let itemResult = null;
 
@@ -353,6 +440,8 @@ routerAdd("POST", "/api/iceage/items/{id}/mutate", (e) => {
       throw new ApiError(409, "Lagret ändrades på en annan enhet. Försök igen.");
     }
 
+    const quantityBefore = item.getFloat("quantity");
+    const locationBefore = item.getString("location");
     let eventType = "quantityChanged";
     if (action === "remove") {
       const amount = lib.number(body.quantity, "antal", 0, 100000);
@@ -381,11 +470,144 @@ routerAdd("POST", "/api/iceage/items/{id}/mutate", (e) => {
     item.set("updatedBy", e.auth.id);
     item.set("version", expectedVersion + 1);
     txApp.save(item);
-    lib.event(txApp, householdId, item.id, eventType, e.auth.id);
+    const quantityAfter = item.getFloat("quantity");
+    lib.event(txApp, householdId, item.id, eventType, e.auth.id, {
+      quantityBefore: quantityBefore,
+      quantityAfter: quantityAfter,
+      quantityDelta: quantityAfter - quantityBefore,
+      comment: comment,
+      source: source,
+      fromLocation: locationBefore,
+      toLocation: item.getString("location"),
+    });
     itemResult = lib.publicRecord(item);
   });
   return e.json(200, { item: itemResult });
 }, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
+
+routerAdd("POST", "/api/iceage/locations/{id}/audits", (e) => {
+  const lib = require(__hooks + "/lib/iceage.js");
+  const householdId = lib.household(e);
+  const locationId = lib.text(e.request.pathValue("id"), "förvaringsplats", 32);
+  lib.location(e.app, locationId, householdId);
+  const body = lib.body(e);
+  if (!Array.isArray(body.rows) || !Array.isArray(body.extras)) {
+    throw new BadRequestError("Inventeringen saknar rader.");
+  }
+  if (body.rows.length > 500 || body.extras.length > 100) {
+    throw new BadRequestError("Inventeringen är för stor.");
+  }
+
+  let auditResult = null;
+  e.app.runInTransaction((txApp) => {
+    const rows = [];
+    const seen = {};
+    for (const input of body.rows) {
+      const itemId = lib.text(input.itemId, "vara", 32);
+      if (seen[itemId]) throw new BadRequestError("Samma vara finns flera gånger.");
+      seen[itemId] = true;
+      const item = txApp.findRecordById(lib.collections.items, itemId);
+      if (
+        item.getString("household") !== householdId ||
+        item.getString("location") !== locationId ||
+        item.getString("status") !== "active"
+      ) {
+        throw new BadRequestError("Varan hör inte till den inventerade platsen.");
+      }
+      const expectedVersion = lib.number(input.expectedVersion, "version", 1, 1000000000);
+      if (item.getInt("version") !== expectedVersion) {
+        throw new ApiError(409, "Lagret ändrades på en annan enhet. Starta om inventeringen.");
+      }
+      rows.push({
+        item: item,
+        expectedVersion: expectedVersion,
+        observedQuantity: lib.number(input.observedQuantity, "observerad mängd", 0, 100000),
+        note: lib.optionalText(input.note, 500),
+      });
+    }
+
+    const extras = body.extras.map((input) => ({
+      name: lib.text(input.name, "namn", 120),
+      category: lib.text(input.category, "kategori", 80),
+      quantity: lib.number(input.quantity, "antal", 0.01, 100000),
+      unit: lib.text(input.unit, "enhet", 40),
+      note: lib.optionalText(input.note, 500),
+    }));
+    const changedRows = rows.filter(
+      (row) => row.item.getFloat("quantity") !== row.observedQuantity,
+    );
+    const audit = new Record(txApp.findCollectionByNameOrId(lib.collections.audits));
+    audit.set("household", householdId);
+    audit.set("location", locationId);
+    audit.set("actor", e.auth.id);
+    audit.set("status", "completed");
+    audit.set("changeCount", changedRows.length + extras.length);
+    audit.set("summary", JSON.stringify({
+      adjusted: changedRows.length,
+      added: extras.length,
+    }));
+    txApp.save(audit);
+
+    for (const row of changedRows) {
+      const quantityBefore = row.item.getFloat("quantity");
+      row.item.set("quantity", row.observedQuantity);
+      row.item.set("status", row.observedQuantity === 0 ? "consumed" : "active");
+      row.item.set("updatedBy", e.auth.id);
+      row.item.set("version", row.expectedVersion + 1);
+      txApp.save(row.item);
+      lib.event(
+        txApp,
+        householdId,
+        row.item.id,
+        row.observedQuantity === 0
+          ? "consumed"
+          : row.observedQuantity > quantityBefore
+            ? "restocked"
+            : "quantityChanged",
+        e.auth.id,
+        {
+          quantityBefore: quantityBefore,
+          quantityAfter: row.observedQuantity,
+          quantityDelta: row.observedQuantity - quantityBefore,
+          comment: row.note,
+          source: "audit",
+          fromLocation: locationId,
+          toLocation: locationId,
+          audit: audit.id,
+        },
+      );
+    }
+
+    for (const extra of extras) {
+      const item = new Record(txApp.findCollectionByNameOrId(lib.collections.items));
+      item.set("household", householdId);
+      item.set("location", locationId);
+      item.set("name", extra.name);
+      item.set("category", extra.category);
+      item.set("quantity", extra.quantity);
+      item.set("unit", extra.unit);
+      item.set("dateSource", "none");
+      item.set("note", extra.note);
+      item.set("status", "active");
+      item.set("createdBy", e.auth.id);
+      item.set("updatedBy", e.auth.id);
+      item.set("version", 1);
+      txApp.save(item);
+      lib.event(txApp, householdId, item.id, "created", e.auth.id, {
+        quantityBefore: 0,
+        quantityAfter: extra.quantity,
+        quantityDelta: extra.quantity,
+        comment: extra.note,
+        source: "audit",
+        toLocation: locationId,
+        audit: audit.id,
+      });
+    }
+    auditResult = lib.publicRecord(audit);
+  });
+
+  return e.json(201, { audit: auditResult });
+}, $apis.requireAuth("users"), $apis.bodyLimit(256 * 1024));
 
 routerAdd("POST", "/api/iceage/extract", (e) => {
   const lib = require(__hooks + "/lib/iceage.js");
@@ -425,7 +647,8 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
     }))) + ".",
     transcript ? "Svensk transkription: " + transcript : "Ingen röstbeskrivning.",
     "Tolka avsikten. Matcha borttag, förbrukning eller flytt mot ett befintligt namn när det är tydligt.",
-    "Gissa aldrig ett tryckt datum. Ett uppskattat ät-före-datum ska markeras estimated.",
+    "Skilj på bestBefore (bäst före), useBy (sista förbrukningsdag), openedOn (öppnad) och estimatedDate (uppskattat planeringsdatum).",
+    "Gissa aldrig ett tryckt datum. Uppskattade datum ska bara ligga i estimatedDate och markeras estimated.",
     "Markera varje osäkert fält. Svara på svenska.",
   ].join("\n");
   const inferenceStartedAt = Date.now();
