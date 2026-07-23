@@ -48,6 +48,30 @@ without opening the PocketBase dashboard or exposing its admin token:
 Pass a number from 1–200 to change the result count. PocketBase log retention
 is controlled by its local Logs settings on M5.
 
+## Contextual feedback
+
+Private native builds show a persistent **Feedback** button, including inside
+the add-item, move-item, and Home-settings sheets. The client records the
+current screen, flow, and step when the button is pressed, so a short comment
+such as “this window is hard to navigate” arrives with useful context.
+
+Feedback is accepted before or after login so login problems can also be
+reported. The endpoint is limited to 8 KiB and ten attempts per source IP per
+hour. It stores only the typed message, selected category, allowlisted
+screen/flow/step identifiers, app/build/device metadata, and—when already
+authenticated—the user and Home relations. It does not accept screenshots,
+photos, audio, transcripts, inventory contents, passwords, or auth tokens.
+Records are private to the PocketBase superuser and remain on M5.
+
+Read the latest feedback from the repository root without opening the
+PocketBase dashboard or exposing its admin token:
+
+```bash
+./scripts/show-feedback.sh
+```
+
+Pass a number from 1–200 to change the result count.
+
 The public API uses `Home` terminology. PocketBase collection and relation
 names retain the original `household` wording as an internal compatibility
 detail so existing installations can migrate without rewriting identifiers.

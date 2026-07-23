@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/features/auth/auth-provider';
+import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { useInventory } from '@/features/inventory/inventory-provider';
 import { storageTypeDetails, storageTypeOptions } from '@/features/inventory/storage-place';
 import type { StoragePlace, StoragePlaceInput, StorageType } from '@/features/inventory/types';
@@ -38,6 +39,11 @@ export function HomeMenu({ visible, onClose }: { visible: boolean; onClose: () =
   const [error, setError] = useState<string>();
   const canManage = !home || home.role === 'owner';
   const homeName = editedHomeName ?? home?.name ?? 'Mitt hem';
+  const feedbackStep = showPlaceForm
+    ? 'storage-place-form'
+    : token
+      ? 'invitation-created'
+      : 'settings';
 
   function beginPlace(place?: StoragePlace) {
     setEditingPlace(place);
@@ -269,6 +275,14 @@ export function HomeMenu({ visible, onClose }: { visible: boolean; onClose: () =
             )}
           </View>
         </ScrollView>
+        <FeedbackOverlay
+          context={{
+            route: '/',
+            screen: 'home-settings',
+            flow: 'home-settings',
+            step: feedbackStep,
+          }}
+        />
       </SafeAreaView>
     </Modal>
   );

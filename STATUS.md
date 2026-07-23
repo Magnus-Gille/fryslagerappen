@@ -23,6 +23,12 @@ the private tailnet infrastructure.
   and capture timing. PocketBase stores them only on M5, and
   `scripts/show-phone-telemetry.sh` retrieves the latest safe fields without
   exposing the local superuser token.
+- A persistent, context-aware feedback control is available at app level and
+  inside the add-item, move-item, and Home-settings sheets. It captures the
+  current screen/flow/step at button press and sends a short typed or dictated
+  message to a private, rate-limited M5 collection; it never attaches capture
+  media or inventory contents. `scripts/show-feedback.sh` provides a
+  low-friction private reader.
 - A Home has one or more members and owner-configured storage places. Owners can
   add, edit, type, and archive any number of freezers, fridges, and dry-storage
   places; occupied places and the final active place cannot be archived.
@@ -74,10 +80,11 @@ the private tailnet infrastructure.
   issue invitations.
 - All synthetic accounts, households, items, events, invitations, and quotas
   were removed after the remote tests.
-- Expo Doctor 20/20, ESLint, TypeScript, 11 Jest suites / 46 tests, static web
+- Expo Doctor 20/20, ESLint, TypeScript, 12 Jest suites / 51 tests, static web
   export, a native iOS simulator build, migration validation, Bash syntax, Git
   whitespace checks, and secret scanning pass. The simulator login screen was
-  visually inspected after launch; its disabled action state was corrected.
+  visually inspected after launch; the persistent feedback control is visible
+  without covering the login form.
 - The five typed storage filters, Home settings, creation of a second fridge,
   and the multi-destination move picker were visually verified at iPhone width
   in the native simulator.
@@ -137,8 +144,7 @@ the private tailnet infrastructure.
 
 ## Next step
 
-Wait for build 260723094432 to finish TestFlight processing and appear in the
-automatically distributed `Familjen` group. Then have Magnus and Sara update
-and try photo-only, voice-only, and photo-plus-voice captures in ordinary
-kitchen use, and inspect `./scripts/show-phone-telemetry.sh` for device, server,
-transcription, and model timings.
+Deploy the contextual-feedback migration and route to M5, merge the reviewed
+app change, and distribute its TestFlight build to `Familjen`. Then use
+`./scripts/show-feedback.sh` together with `./scripts/show-phone-telemetry.sh`
+to ground the next UX iteration in comments and timings from Magnus and Sara.

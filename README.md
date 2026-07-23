@@ -22,6 +22,7 @@ mellan hemmets medlemmar och tydligt markerade "ät snart"-rekommendationer.
 - Expo SQLite installerat inför den planerade offline-kärnan
 - Självhostad PocketBase på M5 för autentisering, behörighet, lagring och realtid
 - Lokal Whisper och multimodal modell på M5, med Orin Nano som valfri worker
+- Kontextmedveten feedback i varje appflöde, privat lagrad på M5
 - Jest, React Native Testing Library och ESLint
 - Expo Dev Client och EAS-konfiguration för utvecklingsbyggen
 

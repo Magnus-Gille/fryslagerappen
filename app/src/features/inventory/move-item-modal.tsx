@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { useTheme } from '@/hooks/use-theme';
 
 import { storagePlaceLabel, storageTypeDetails } from './storage-place';
@@ -108,6 +109,14 @@ export function MoveItemModal({ item, locations, visible, onClose, onMove }: Pro
           )}
           {error && <ThemedText type="small" style={{ color: theme.warningText }}>{error}</ThemedText>}
         </View>
+        <FeedbackOverlay
+          context={{
+            route: '/',
+            screen: 'inventory',
+            flow: 'move-item',
+            step: 'choose-destination',
+          }}
+        />
       </SafeAreaView>
     </Modal>
   );

@@ -24,6 +24,10 @@ const pagesWorkflow = fs.readFileSync(
   'utf8',
 );
 const appConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../app.json'), 'utf8'));
+const feedbackMigration = fs.readFileSync(
+  path.join(__dirname, '../../backend/pb_migrations/1784743000_add_contextual_feedback.js'),
+  'utf8',
+);
 
 describe('M5 backend security contract', () => {
   it('scopes every user-readable collection to the authenticated household', () => {
@@ -104,5 +108,18 @@ describe('M5 backend security contract', () => {
     ]) {
       expect(helpers).toContain(`"${event}"`);
     }
+  });
+
+  it('stores contextual feedback privately through a bounded, rate-limited route', () => {
+    expect(feedbackMigration).toContain('name: "user_feedback"');
+    expect(feedbackMigration).not.toContain('.listRule =');
+    expect(feedbackMigration).not.toContain('.viewRule =');
+    expect(hooks).toContain('"/api/iceage/feedback"');
+    expect(hooks).toContain('$apis.bodyLimit(8 * 1024)');
+    expect(hooks).toContain('lib.consumeFeedbackQuota(e)');
+    expect(helpers).toContain('function feedback(body)');
+    expect(helpers).toContain('telemetryDiagnostic(body.message, 1500)');
+    expect(hooks).not.toContain('feedback.set("screenshot"');
+    expect(hooks).not.toContain('feedback.set("inventory"');
   });
 });

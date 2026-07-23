@@ -26,7 +26,10 @@ export type TelemetryEvent =
   | 'inventory_mutation_failed'
   | 'capture_extraction_started'
   | 'capture_extraction_succeeded'
-  | 'capture_extraction_failed';
+  | 'capture_extraction_failed'
+  | 'feedback_opened'
+  | 'feedback_succeeded'
+  | 'feedback_failed';
 
 export type TelemetryDetails = {
   stage?: string;
@@ -151,11 +154,11 @@ export function createTelemetryClient(options: TelemetryClientOptions) {
   return { report };
 }
 
-const sessionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+export const telemetrySessionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 const client = createTelemetryClient({
   backendUrl: runtimeConfig.backendUrl,
   fetcher: globalThis.fetch,
-  sessionId,
+  sessionId: telemetrySessionId,
   metadata: {
     appVersion: Constants.expoConfig?.version,
     buildNumber: Constants.expoConfig?.ios?.buildNumber,
