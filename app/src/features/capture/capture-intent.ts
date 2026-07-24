@@ -12,6 +12,10 @@ export const captureIntentSchema = z.object({
   destinationName: z.string().trim().max(120).nullable().default(null),
   frozenOn: z.iso.date().nullable().default(null),
   eatBefore: z.iso.date().nullable().default(null),
+  bestBefore: z.iso.date().nullable().optional(),
+  useBy: z.iso.date().nullable().optional(),
+  openedOn: z.iso.date().nullable().optional(),
+  estimatedDate: z.iso.date().nullable().optional(),
   dateSource: z.enum(['manual', 'label', 'estimated', 'none']).default('none'),
   note: z.string().trim().max(500).nullable().default(null),
   transcript: z.string().trim().max(1000).nullable().default(null),
@@ -54,6 +58,14 @@ export function toAddItemInput(intent: CaptureIntent, locations: StoragePlace[])
     locationId,
     frozenOn: intent.frozenOn ?? undefined,
     eatBefore: intent.eatBefore ?? undefined,
+    bestBefore:
+      intent.bestBefore ??
+      (intent.dateSource !== 'estimated' ? intent.eatBefore ?? undefined : undefined),
+    useBy: intent.useBy ?? undefined,
+    openedOn: intent.openedOn ?? undefined,
+    estimatedDate:
+      intent.estimatedDate ??
+      (intent.dateSource === 'estimated' ? intent.eatBefore ?? undefined : undefined),
     dateSource: intent.dateSource,
     note: intent.note ?? intent.transcript ?? undefined,
   };

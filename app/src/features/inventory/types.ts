@@ -1,5 +1,6 @@
 export type ItemStatus = 'active' | 'consumed' | 'discarded';
 export type DateSource = 'manual' | 'label' | 'estimated' | 'none';
+export type ChangeSource = 'manual' | 'photo' | 'voice' | 'barcode' | 'audit' | 'system';
 
 export type StorageType = 'freezer' | 'fridge' | 'dry';
 
@@ -19,7 +20,12 @@ export type FreezerItem = {
   locationId: string;
   frozenOn?: string;
   eatBefore?: string;
+  bestBefore?: string;
+  useBy?: string;
+  openedOn?: string;
+  estimatedDate?: string;
   dateSource: DateSource;
+  barcode?: string;
   note?: string;
   status: ItemStatus;
   createdAt: string;
@@ -34,13 +40,25 @@ export type InventoryEventType =
   | 'quantityChanged'
   | 'moved'
   | 'consumed'
-  | 'restored';
+  | 'restored'
+  | 'restocked'
+  | 'audited';
 
 export type InventoryEvent = {
   id: string;
   itemId: string;
   type: InventoryEventType;
   occurredAt: string;
+  quantityDelta?: number;
+  quantityBefore?: number;
+  quantityAfter?: number;
+  comment?: string;
+  source?: ChangeSource;
+  actorName?: string;
+  fromLocationId?: string;
+  fromLocationName?: string;
+  toLocationId?: string;
+  toLocationName?: string;
 };
 
 export type InventoryState = {
@@ -58,15 +76,41 @@ export type AddItemInput = Pick<
   | 'locationId'
   | 'frozenOn'
   | 'eatBefore'
+  | 'bestBefore'
+  | 'useBy'
+  | 'openedOn'
+  | 'estimatedDate'
   | 'dateSource'
+  | 'barcode'
   | 'note'
->;
+> & {
+  changeSource?: ChangeSource;
+};
+
+export type AuditExtraInput = {
+  name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  note?: string;
+};
+
+export type InventoryAuditInput = {
+  rows: {
+    itemId: string;
+    expectedVersion: number;
+    observedQuantity: number;
+    note?: string;
+  }[];
+  extras: AuditExtraInput[];
+};
 
 export type InventoryAction =
   | { type: 'stateReplaced'; payload: InventoryState }
   | { type: 'itemAdded'; payload: AddItemInput }
   | { type: 'quantityDecremented'; itemId: string }
   | { type: 'quantityRemoved'; itemId: string; quantity: number }
+  | { type: 'quantityAudited'; itemId: string; quantity: number }
   | { type: 'itemMoved'; itemId: string; locationId: string }
   | { type: 'itemConsumed'; itemId: string }
   | { type: 'itemRestored'; itemId: string }

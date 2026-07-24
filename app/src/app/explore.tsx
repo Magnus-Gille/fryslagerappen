@@ -12,7 +12,29 @@ const eventLabels = {
   moved: 'Flyttades',
   consumed: 'Markerades som förbrukad',
   restored: 'Återställdes',
+  restocked: 'Fylldes på',
+  audited: 'Inventerades',
 } as const;
+
+const sourceLabels = {
+  manual: 'manuellt',
+  photo: 'foto',
+  voice: 'röst',
+  barcode: 'streckkod',
+  audit: 'inventering',
+  system: 'system',
+} as const;
+
+function relativeTime(value: string) {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60_000));
+  if (minutes < 1) return 'nyss';
+  if (minutes < 60) return `${minutes} min sedan`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h sedan`;
+  return new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short' }).format(
+    new Date(value),
+  );
+}
 
 export default function HistoryScreen() {
   const theme = useTheme();
@@ -105,8 +127,26 @@ export default function HistoryScreen() {
                       <View style={[styles.timelineCopy, index > 0 && { borderTopColor: theme.border }]}>
                         <ThemedText type="smallBold">{item?.name ?? 'Vara'}</ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          {eventLabels[event.type]} · nyss
+                          {eventLabels[event.type]}
+                          {event.quantityDelta
+                            ? ` · ${event.quantityDelta > 0 ? '+' : ''}${event.quantityDelta}`
+                            : ''}
+                          {' · '}
+                          {event.actorName ?? 'Någon i hemmet'}
+                          {event.source ? ` via ${sourceLabels[event.source]}` : ''}
+                          {' · '}
+                          {relativeTime(event.occurredAt)}
                         </ThemedText>
+                        {(event.fromLocationName || event.toLocationName) && (
+                          <ThemedText type="caption" themeColor="textTertiary">
+                            {event.fromLocationName ?? '—'} → {event.toLocationName ?? '—'}
+                          </ThemedText>
+                        )}
+                        {event.comment && (
+                          <ThemedText type="caption" themeColor="textTertiary">
+                            “{event.comment}”
+                          </ThemedText>
+                        )}
                       </View>
                     </View>
                   );

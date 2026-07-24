@@ -11,6 +11,10 @@ const intent = {
   destinationName: null,
   frozenOn: null,
   eatBefore: null,
+  bestBefore: null,
+  useBy: null,
+  openedOn: null,
+  estimatedDate: null,
   dateSource: 'none',
   note: null,
   transcript: null,
@@ -26,6 +30,20 @@ function json(response, status, body) {
 const server = http.createServer((request, response) => {
   if (request.method === 'GET' && request.url === '/health') {
     return json(response, 200, { status: 'ok' });
+  }
+  if (
+    request.method === 'GET' &&
+    request.url?.startsWith('/api/v2/product/07350001234567')
+  ) {
+    return json(response, 200, {
+      status: 1,
+      product: {
+        product_name_sv: 'Krossade tomater',
+        categories_tags: ['sv:konserver'],
+        quantity: '400 g',
+        image_front_small_url: 'https://images.example/tomato.jpg',
+      },
+    });
   }
 
   let size = 0;

@@ -31,6 +31,7 @@ const stepLabels: Record<string, string> = {
   'method-picker': 'Välj metod',
   'photo-capture': 'Foto',
   'voice-capture': 'Röst',
+  'barcode-capture': 'Streckkod',
   'manual-form': 'Manuell registrering',
   'review-add': 'Kontrollera förslag',
   'review-change': 'Bekräfta ändring',
@@ -38,11 +39,14 @@ const stepLabels: Record<string, string> = {
   settings: 'Översikt',
   'storage-place-form': 'Förvaringsplats',
   'invitation-created': 'Inbjudningskod',
+  count: 'Räkna',
+  review: 'Granska',
 };
 
 const flowLabels: Record<string, string> = {
   'add-item': 'Lägg till vara',
   'move-item': 'Flytta vara',
+  'inventory-audit': 'Inventera plats',
   'home-settings': 'Heminställningar',
 };
 
@@ -67,13 +71,14 @@ export function appFeedbackContext(input: AppFeedbackContextInput): FeedbackCont
 }
 
 export function addItemFeedbackContext(
-  mode: 'photo' | 'voice' | 'manual' | null,
+  mode: 'photo' | 'voice' | 'barcode' | 'manual' | null,
   intentAction: string | null,
 ): FeedbackContext {
   let step = 'method-picker';
   if (intentAction) step = intentAction === 'add' ? 'review-add' : 'review-change';
   else if (mode === 'photo') step = 'photo-capture';
   else if (mode === 'voice') step = 'voice-capture';
+  else if (mode === 'barcode') step = 'barcode-capture';
   else if (mode === 'manual') step = 'manual-form';
   return { route: '/', screen: 'inventory', flow: 'add-item', step };
 }

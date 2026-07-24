@@ -27,6 +27,12 @@ export type TelemetryEvent =
   | 'capture_extraction_started'
   | 'capture_extraction_succeeded'
   | 'capture_extraction_failed'
+  | 'barcode_scan_started'
+  | 'barcode_lookup_succeeded'
+  | 'barcode_lookup_failed'
+  | 'inventory_audit_started'
+  | 'inventory_audit_succeeded'
+  | 'inventory_audit_failed'
   | 'feedback_opened'
   | 'feedback_succeeded'
   | 'feedback_failed';

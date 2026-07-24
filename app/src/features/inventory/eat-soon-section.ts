@@ -25,6 +25,6 @@ export function eatSoonSection(input: {
   return {
     kind: 'list',
     title: 'Ät snart',
-    subtitle: 'Planeringsstöd för de närmaste 30 dagarna',
+    subtitle: 'Försiktig prioritering från märkning och registrerade datum',
   };
 }

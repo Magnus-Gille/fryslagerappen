@@ -16,7 +16,7 @@ describe('eatSoonSection', () => {
     expect(eatSoonSection({ query: '', itemCount: 3 })).toEqual({
       kind: 'list',
       title: 'Ät snart',
-      subtitle: 'Planeringsstöd för de närmaste 30 dagarna',
+      subtitle: 'Försiktig prioritering från märkning och registrerade datum',
     });
   });
 

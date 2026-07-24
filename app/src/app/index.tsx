@@ -9,6 +9,7 @@ import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { AddItemModal, type CaptureMode } from '@/features/inventory/add-item-modal';
 import { eatSoonSection } from '@/features/inventory/eat-soon-section';
 import { InventoryCard } from '@/features/inventory/inventory-card';
+import { InventoryAuditModal } from '@/features/inventory/inventory-audit-modal';
 import { HomeMenu } from '@/features/home/home-menu';
 import { selectActiveItems } from '@/features/inventory/inventory-state';
 import { useInventory } from '@/features/inventory/inventory-provider';
@@ -20,13 +21,14 @@ import { useTheme } from '@/hooks/use-theme';
 export default function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { state, eatSoonItems, syncStatus, takeOne, moveItem, consumeItem } = useInventory();
+  const { state, rotationItems, syncStatus, takeOne, moveItem, consumeItem } = useInventory();
   const { state: captureState, retryCapture, removeJob } = useCaptureAnalysis();
   const [query, setQuery] = useState('');
   const [locationId, setLocationId] = useState<string | undefined>();
   const [addEntry, setAddEntry] = useState<CaptureMode | 'chooser'>();
   const [showHome, setShowHome] = useState(false);
   const [movingItemId, setMovingItemId] = useState<string>();
+  const [showAudit, setShowAudit] = useState(false);
   const [reviewJobId, setReviewJobId] = useState<number>();
   const activeLocationId = state.locations.some((location) => location.id === locationId)
     ? locationId
@@ -37,7 +39,7 @@ export default function HomeScreen() {
     [activeLocationId, query, state],
   );
 
-  const soonSection = eatSoonSection({ query, activeLocationId, itemCount: eatSoonItems.length });
+  const soonSection = eatSoonSection({ query, activeLocationId, itemCount: rotationItems.length });
   const isCapturing = captureState.jobs.some((job) => job.status === 'analyzing');
   const reviewJob = captureState.jobs.find(
     (job) => job.jobId === reviewJobId && job.status === 'ready',
@@ -120,6 +122,21 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
 
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setShowAudit(true)}
+            style={[styles.auditButton, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={styles.flex}>
+              <ThemedText type="smallBold">
+                Inventera {activeLocationId ? 'vald plats' : 'en förvaringsplats'}
+              </ThemedText>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Räkna avvikelser och spara allt samtidigt
+              </ThemedText>
+            </View>
+            <ThemedText style={{ color: theme.primary }}>›</ThemedText>
+          </Pressable>
+
           {soonSection.kind === 'empty' && (
             <View style={styles.section}>
               <View style={styles.sectionHeading}>
@@ -145,7 +162,7 @@ export default function HomeScreen() {
                 </View>
                 <View style={[styles.countBadge, { backgroundColor: theme.warningSoft }]}>
                   <ThemedText type="caption" style={{ color: theme.warningText }}>
-                    {eatSoonItems.length} varor
+                    {rotationItems.length} varor
                   </ThemedText>
                 </View>
               </View>
@@ -154,7 +171,7 @@ export default function HomeScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.soonRow}>
-                {eatSoonItems.map((item) => {
+                {rotationItems.map(({ item, assessment }) => {
                   const location = state.locations.find((entry) => entry.id === item.locationId)!;
                   return (
                     <View
@@ -170,7 +187,7 @@ export default function HomeScreen() {
                         {item.quantity} {item.unit} · {storagePlaceLabel(location)}
                       </ThemedText>
                       <ThemedText type="caption" style={{ color: theme.warningText }}>
-                        {item.dateSource === 'estimated' ? 'Uppskattat' : 'Registrerat'} {item.eatBefore}
+                        {assessment.reason}
                       </ThemedText>
                     </View>
                   );
@@ -236,19 +253,32 @@ export default function HomeScreen() {
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Lägg till med foto"
+            accessibilityLabel="Lägg till med streckkod"
             disabled={isCapturing}
-            onPress={() => setAddEntry('photo')}
+            onPress={() => setAddEntry('barcode')}
             style={({ pressed }) => [
               styles.quickAction,
               { backgroundColor: theme.primary },
               isCapturing && styles.disabled,
               pressed && styles.pressed,
             ]}>
-            <ThemedText style={styles.quickActionIcon}>📷</ThemedText>
+            <ThemedText style={styles.quickActionIcon}>▥</ThemedText>
             <ThemedText type="smallBold" style={styles.quickActionPrimaryText}>
-              Foto
+              Skanna
             </ThemedText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Lägg till med foto"
+            disabled={isCapturing}
+            onPress={() => setAddEntry('photo')}
+            style={({ pressed }) => [
+              styles.moreButton,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+              isCapturing && styles.disabled,
+              pressed && styles.pressed,
+            ]}>
+            <ThemedText style={styles.quickActionIcon}>📷</ThemedText>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -256,16 +286,12 @@ export default function HomeScreen() {
             disabled={isCapturing}
             onPress={() => setAddEntry('voice')}
             style={({ pressed }) => [
-              styles.quickAction,
-              styles.quickActionSecondary,
+              styles.moreButton,
               { backgroundColor: theme.surface, borderColor: theme.border },
               isCapturing && styles.disabled,
               pressed && styles.pressed,
             ]}>
             <ThemedText style={styles.quickActionIcon}>🎙️</ThemedText>
-            <ThemedText type="smallBold" style={{ color: theme.primary }}>
-              Röst
-            </ThemedText>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -303,6 +329,13 @@ export default function HomeScreen() {
         onMove={(destinationId) => movingItemId ? moveItem(movingItemId, destinationId) : Promise.resolve()}
       />
       <HomeMenu visible={showHome} onClose={() => setShowHome(false)} />
+      {showAudit && (
+        <InventoryAuditModal
+          visible
+          initialLocationId={activeLocationId}
+          onClose={() => setShowAudit(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -337,6 +370,7 @@ function FilterChip({
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   screen: { flex: 1 },
   scrollContent: { alignItems: 'center' },
   content: {
@@ -377,6 +411,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  auditButton: {
+    minHeight: 64,
+    borderWidth: 1,
+    borderRadius: Radius.large,
+    paddingHorizontal: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
   section: { gap: Spacing.three },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
