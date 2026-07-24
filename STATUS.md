@@ -144,6 +144,23 @@ the private tailnet infrastructure.
 - `npm audit --omit=dev` reports 11 moderate Expo-toolchain advisories and no
   high or critical findings. The proposed forced fix is an incompatible Expo
   downgrade and remains deferred.
+- Sara's first pilot feedback (2026-07-24) was triaged into issues #32–#34 and
+  fixed in PR #35: the Ät snart section is always discoverable with an
+  explanatory empty state, the add-item form has a numeric auto-formatting
+  Bäst före field with calendar validation, and capture audio travels as
+  base64 JSON because the React Native multipart upload failed client-side in
+  2 ms with a status-0 SDK error (root cause confirmed via phone telemetry,
+  session mryonezw-r2zn4usvus). Failed analyses retain the photo/voice input
+  so Försök igen resubmits directly, with actionable Swedish transport-error
+  messages. Reviewed by M5 qwen3-coder-next-80b plus self-review; one
+  hardening finding (RFC 4648 whitespace in base64 decoding) was applied.
+- Backend release `20260724090917` with the audioBase64 extract path is
+  deployed on M5 and healthy; legacy multipart audio still works for older
+  builds. The full integration suite passed against a real PocketBase 0.39.8
+  with the new JSON audio test.
+- Version 1.0.0 build 260724090948, containing the feedback fixes and the
+  expo-dev-client 57.0.9 alignment, was archived with the company team and
+  accepted by App Store Connect for TestFlight processing.
 
 ## Remaining handoffs
 
@@ -159,8 +176,9 @@ the private tailnet infrastructure.
 
 ## Next step
 
-Wait for Apple to finish processing build 260723103149 and let automatic
-distribution deliver it to `Familjen`. Then have Magnus and Sara update in
-TestFlight and use the persistent control during normal kitchen use. Read
-comments with `./scripts/show-feedback.sh` and correlate technical symptoms
-with `./scripts/show-phone-telemetry.sh`.
+Wait for Apple to finish processing build 260724090948 and let automatic
+distribution deliver it to `Familjen`. Then have Sara update in TestFlight and
+retry the exact flow that failed: photo capture plus a spoken best-before
+date. Confirm through `./scripts/show-phone-telemetry.sh` that the
+photo_voice extraction succeeds on her device, and keep reading
+`./scripts/show-feedback.sh` for new comments.
