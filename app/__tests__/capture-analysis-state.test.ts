@@ -3,6 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import {
   captureAnalysisReducer,
   initialCaptureAnalysisState,
+  type CaptureAnalysisInput,
 } from '@/features/capture/capture-analysis-state';
 import type { CaptureIntent } from '@/features/capture/capture-intent';
 
@@ -23,45 +24,80 @@ const intent: CaptureIntent = {
   uncertainFields: [],
 };
 
+const voiceInput: CaptureAnalysisInput = { audioUri: 'file:///caches/recording-1.m4a' };
+const photoInput: CaptureAnalysisInput = {
+  photo: { base64: 'aGVq', mimeType: 'image/jpeg', uri: 'file:///caches/photo-1.jpg' },
+  audioUri: 'file:///caches/recording-2.m4a',
+};
+
 describe('capture analysis state', () => {
-  it('keeps analysis alive as a background job until the result is reviewed', () => {
-    const analyzing = captureAnalysisReducer(initialCaptureAnalysisState, {
+  it('queues a new capture instead of dropping an unreviewed ready suggestion', () => {
+    const job1Analyzing = captureAnalysisReducer(initialCaptureAnalysisState, {
       type: 'started',
-      jobId: 7,
+      jobId: 1,
       mode: 'voice',
       startedAt: 1_000,
+      input: voiceInput,
     });
-    const ready = captureAnalysisReducer(analyzing, {
+    const job1Ready = captureAnalysisReducer(job1Analyzing, {
       type: 'succeeded',
-      jobId: 7,
-      completedAt: 4_000,
+      jobId: 1,
+      completedAt: 2_000,
       intent,
-      timing: { transcriptionMs: 800, inferenceMs: 1_900, totalMs: 2_700 },
+      timing: { transcriptionMs: 800, inferenceMs: 900, totalMs: 1_700 },
+    });
+    const bothJobs = captureAnalysisReducer(job1Ready, {
+      type: 'started',
+      jobId: 2,
+      mode: 'photo',
+      startedAt: 3_000,
+      input: photoInput,
     });
 
-    expect(analyzing).toMatchObject({
-      status: 'analyzing',
-      jobId: 7,
-      mode: 'voice',
-    });
-    expect(ready).toMatchObject({
+    expect(bothJobs.jobs).toHaveLength(2);
+    expect(bothJobs.jobs[0]).toMatchObject({
+      jobId: 1,
       status: 'ready',
-      jobId: 7,
       mode: 'voice',
       intent,
-      timing: { totalMs: 2_700 },
     });
-    expect(captureAnalysisReducer(ready, { type: 'cleared' })).toEqual(
-      initialCaptureAnalysisState,
-    );
+    expect(bothJobs.jobs[1]).toMatchObject({
+      jobId: 2,
+      status: 'analyzing',
+      mode: 'photo',
+    });
   });
 
-  it('ignores a late response from an older job', () => {
+  it('queues three sequential captures into three ready suggestions', () => {
+    let state = initialCaptureAnalysisState;
+    for (const jobId of [1, 2, 3]) {
+      state = captureAnalysisReducer(state, {
+        type: 'started',
+        jobId,
+        mode: 'voice',
+        startedAt: jobId * 1_000,
+        input: voiceInput,
+      });
+      state = captureAnalysisReducer(state, {
+        type: 'succeeded',
+        jobId,
+        completedAt: jobId * 1_000 + 500,
+        intent,
+      });
+    }
+
+    expect(state.jobs).toHaveLength(3);
+    expect(state.jobs.every((job) => job.status === 'ready')).toBe(true);
+    expect(state.jobs.map((job) => job.jobId)).toEqual([1, 2, 3]);
+  });
+
+  it('ignores a late response for an unknown or already-resolved job', () => {
     const current = captureAnalysisReducer(initialCaptureAnalysisState, {
       type: 'started',
       jobId: 9,
       mode: 'photo',
       startedAt: 2_000,
+      input: photoInput,
     });
 
     expect(
@@ -74,12 +110,13 @@ describe('capture analysis state', () => {
     ).toBe(current);
   });
 
-  it('keeps a failed job retryable without retaining raw media', () => {
+  it('keeps the captured input on failure so a retry needs no new photo or clip', () => {
     const analyzing = captureAnalysisReducer(initialCaptureAnalysisState, {
       type: 'started',
       jobId: 3,
       mode: 'photo',
       startedAt: 1_000,
+      input: photoInput,
     });
     const failed = captureAnalysisReducer(analyzing, {
       type: 'failed',
@@ -88,15 +125,47 @@ describe('capture analysis state', () => {
       message: 'Tolkningen misslyckades.',
     });
 
-    expect(failed).toEqual({
-      status: 'error',
-      jobId: 3,
-      mode: 'photo',
+    expect(failed.jobs).toEqual([
+      {
+        status: 'error',
+        jobId: 3,
+        mode: 'photo',
+        startedAt: 1_000,
+        completedAt: 5_000,
+        message: 'Tolkningen misslyckades.',
+        input: photoInput,
+      },
+    ]);
+
+    const removed = captureAnalysisReducer(failed, { type: 'removed', jobId: 3 });
+    expect(removed.jobs).toEqual([]);
+  });
+
+  it('removes exactly the targeted job and leaves the rest of the queue intact', () => {
+    let state = initialCaptureAnalysisState;
+    for (const jobId of [1, 2, 3]) {
+      state = captureAnalysisReducer(state, {
+        type: 'started',
+        jobId,
+        mode: 'voice',
+        startedAt: jobId * 1_000,
+        input: voiceInput,
+      });
+    }
+
+    const withOneRemoved = captureAnalysisReducer(state, { type: 'removed', jobId: 2 });
+    expect(withOneRemoved.jobs.map((job) => job.jobId)).toEqual([1, 3]);
+  });
+
+  it('leaves state unchanged when removing an unknown jobId', () => {
+    const started = captureAnalysisReducer(initialCaptureAnalysisState, {
+      type: 'started',
+      jobId: 4,
+      mode: 'voice',
       startedAt: 1_000,
-      completedAt: 5_000,
-      message: 'Tolkningen misslyckades.',
+      input: voiceInput,
     });
-    expect(failed).not.toHaveProperty('photo');
-    expect(failed).not.toHaveProperty('audioUri');
+
+    expect(captureAnalysisReducer(started, { type: 'removed', jobId: 999 })).toBe(started);
   });
 });

@@ -13,23 +13,17 @@ import { diagnosticError, reportTelemetry } from '@/lib/telemetry';
 import {
   captureAnalysisReducer,
   initialCaptureAnalysisState,
+  type CaptureAnalysisInput,
   type CaptureAnalysisState,
 } from './capture-analysis-state';
-import {
-  extractInventoryIntent,
-  type CapturePhoto,
-  useCaptureHomeId,
-} from './capture-service';
-
-type CaptureAnalysisInput = {
-  photo?: CapturePhoto;
-  audioUri?: string;
-};
+import { extractInventoryIntent, useCaptureHomeId } from './capture-service';
+import { captureFailureMessage } from './capture-upload';
 
 type CaptureAnalysisContextValue = {
   state: CaptureAnalysisState;
   startCapture: (input: CaptureAnalysisInput) => boolean;
-  clearCapture: () => void;
+  retryCapture: (jobId: number) => boolean;
+  removeJob: (jobId: number) => void;
 };
 
 const CaptureAnalysisContext = createContext<CaptureAnalysisContextValue | null>(null);
@@ -51,7 +45,7 @@ export function CaptureAnalysisProvider({ children }: PropsWithChildren) {
       const mode = input.photo ? 'photo' : 'voice';
       const stage = input.photo && input.audioUri ? 'photo_voice' : mode;
       activeJobId.current = jobId;
-      dispatch({ type: 'started', jobId, mode, startedAt });
+      dispatch({ type: 'started', jobId, mode, startedAt, input });
       void reportTelemetry('capture_extraction_started', { stage });
 
       void extractInventoryIntent({ homeId, photo: input.photo, audioUri: input.audioUri })
@@ -74,7 +68,7 @@ export function CaptureAnalysisProvider({ children }: PropsWithChildren) {
             type: 'failed',
             jobId,
             completedAt,
-            message: error instanceof Error ? error.message : 'Tolkningen misslyckades. Försök igen.',
+            message: captureFailureMessage(error),
           });
           void reportTelemetry('capture_extraction_failed', {
             stage,
@@ -87,14 +81,24 @@ export function CaptureAnalysisProvider({ children }: PropsWithChildren) {
     [homeId],
   );
 
-  const clearCapture = useCallback(() => {
-    if (activeJobId.current !== undefined) return;
-    dispatch({ type: 'cleared' });
+  const retryCapture = useCallback(
+    (jobId: number) => {
+      const job = state.jobs.find((candidate) => candidate.jobId === jobId);
+      if (!job || job.status !== 'error') return false;
+      const ok = startCapture(job.input);
+      if (ok) dispatch({ type: 'removed', jobId });
+      return ok;
+    },
+    [startCapture, state],
+  );
+
+  const removeJob = useCallback((jobId: number) => {
+    dispatch({ type: 'removed', jobId });
   }, []);
 
   const value = useMemo(
-    () => ({ state, startCapture, clearCapture }),
-    [clearCapture, startCapture, state],
+    () => ({ state, startCapture, retryCapture, removeJob }),
+    [removeJob, retryCapture, startCapture, state],
   );
 
   return (

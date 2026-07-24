@@ -18,6 +18,7 @@ import { findLocationId, toAddItemInput, type CaptureIntent } from '@/features/c
 import { addItemFeedbackContext } from '@/features/feedback/feedback-context';
 import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { useTheme } from '@/hooks/use-theme';
+import { dateInputError, formatDateInput } from '@/lib/date-input';
 
 import { BarcodeCapture } from './barcode-capture';
 import type { BarcodeProductProposal } from './barcode-service';
@@ -106,6 +107,16 @@ export function AddItemModal({
 
   async function save() {
     if (!form.name.trim()) return;
+    const dateError =
+      dateInputError(form.frozenOn ?? '', 'Lagrad sedan') ??
+      dateInputError(form.bestBefore ?? '', 'Bäst före') ??
+      dateInputError(form.useBy ?? '', 'Sista förbrukningsdag') ??
+      dateInputError(form.openedOn ?? '', 'Öppnad') ??
+      dateInputError(form.estimatedDate ?? '', 'Uppskattat datum');
+    if (dateError) {
+      setError(dateError);
+      return;
+    }
     setBusy(true);
     setError(undefined);
     try {
@@ -320,6 +331,7 @@ export function AddItemModal({
                 <Field label="Datum" style={styles.column}>
                   <TextInput
                     accessibilityLabel="Valt datum"
+                    inputMode="numeric"
                     value={
                       dateKind === 'best_before'
                         ? form.bestBefore
@@ -338,7 +350,7 @@ export function AddItemModal({
                             : dateKind === 'opened'
                               ? 'openedOn'
                               : 'estimatedDate';
-                      update(key, value);
+                      update(key, formatDateInput(value));
                       if (value && form.dateSource === 'none') {
                         update('dateSource', dateKind === 'estimated' ? 'estimated' : 'manual');
                       }
@@ -351,14 +363,19 @@ export function AddItemModal({
                 <Field label="Lagrad sedan" style={styles.column}>
                   <TextInput
                     accessibilityLabel="Lagrad sedan datum"
+                    inputMode="numeric"
                     value={form.frozenOn}
-                    onChangeText={(value) => update('frozenOn', value)}
+                    onChangeText={(value) => update('frozenOn', formatDateInput(value))}
                     placeholder="ÅÅÅÅ-MM-DD"
                     placeholderTextColor={theme.textTertiary}
                     style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                   />
                 </Field>
               </View>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Skriv datumet som står på förpackningen – siffrorna räcker, strecken fylls i
+                automatiskt. Varan dyker upp under “Ät snart” när datumet närmar sig.
+              </ThemedText>
 
               {form.dateSource === 'estimated' && (
                 <View style={[styles.notice, { backgroundColor: theme.warningSoft }]}>

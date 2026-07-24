@@ -1,9 +1,11 @@
+import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { useHome } from '@/features/home/home-provider';
 import { pocketbase } from '@/lib/pocketbase';
 
 import { captureIntentSchema, type CaptureIntent } from './capture-intent';
+import { audioMimeTypeForUri, bytesToBase64 } from './capture-upload';
 
 export type CapturePhoto = { base64: string; mimeType: 'image/jpeg'; uri: string };
 export type CaptureTiming = {
@@ -22,44 +24,33 @@ export async function extractInventoryIntent(input: {
   audioUri?: string;
 }): Promise<CaptureExtractionResult> {
   if (!pocketbase) throw new Error('Anslut appen till M5-servern för riktig foto- och rösttolkning.');
-  if (!input.audioUri) {
-    const result = await pocketbase.send<{ intent: unknown; timing?: unknown }>('/api/iceage/extract', {
-      method: 'POST',
-      body: {
-        homeId: input.homeId,
-        photoBase64: input.photo?.base64,
-        photoMimeType: input.photo?.mimeType,
-      },
-    });
-    return {
-      intent: captureIntentSchema.parse(result.intent),
-      timing: captureTiming(result.timing),
-    };
-  }
-  const body = new FormData();
-  body.append('homeId', input.homeId);
-  if (input.photo) {
-    body.append('photoBase64', input.photo.base64);
-    body.append('photoMimeType', input.photo.mimeType);
-  }
-  if (Platform.OS === 'web') {
-    const blob = await fetch(input.audioUri).then((response) => response.blob());
-    body.append('audio', blob, 'inventory.webm');
-  } else {
-    body.append('audio', {
-      uri: input.audioUri,
-      name: 'inventory.m4a',
-      type: 'audio/m4a',
-    } as unknown as Blob);
-  }
+  // Audio travels as base64 in the same JSON body as the photo. The earlier
+  // multipart upload failed instantly on iOS (status 0 before any network
+  // activity), so no FormData is involved anywhere in this path.
+  const audio = input.audioUri ? await readAudioAsBase64(input.audioUri) : undefined;
   const result = await pocketbase.send<{ intent: unknown; timing?: unknown }>('/api/iceage/extract', {
     method: 'POST',
-    body,
+    body: {
+      homeId: input.homeId,
+      photoBase64: input.photo?.base64,
+      photoMimeType: input.photo?.mimeType,
+      audioBase64: audio?.base64,
+      audioMimeType: audio?.mimeType,
+    },
   });
   return {
     intent: captureIntentSchema.parse(result.intent),
     timing: captureTiming(result.timing),
   };
+}
+
+async function readAudioAsBase64(uri: string): Promise<{ base64: string; mimeType: string }> {
+  if (Platform.OS === 'web') {
+    const blob = await fetch(uri).then((response) => response.blob());
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return { base64: bytesToBase64(bytes), mimeType: blob.type || audioMimeTypeForUri(uri) };
+  }
+  return { base64: await new File(uri).base64(), mimeType: audioMimeTypeForUri(uri) };
 }
 
 export function useCaptureHomeId() {

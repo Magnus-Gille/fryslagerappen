@@ -4,9 +4,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ThemedText } from '@/components/themed-text';
 import { useCaptureAnalysis } from '@/features/capture/capture-analysis-provider';
-import { CaptureStatusCard } from '@/features/capture/capture-status-card';
+import { CaptureStatusList } from '@/features/capture/capture-status-card';
 import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { AddItemModal, type CaptureMode } from '@/features/inventory/add-item-modal';
+import { eatSoonSection } from '@/features/inventory/eat-soon-section';
 import { InventoryCard } from '@/features/inventory/inventory-card';
 import { InventoryAuditModal } from '@/features/inventory/inventory-audit-modal';
 import { HomeMenu } from '@/features/home/home-menu';
@@ -21,13 +22,14 @@ export default function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { state, rotationItems, syncStatus, takeOne, moveItem, consumeItem } = useInventory();
-  const { state: captureState, clearCapture } = useCaptureAnalysis();
+  const { state: captureState, retryCapture, removeJob } = useCaptureAnalysis();
   const [query, setQuery] = useState('');
   const [locationId, setLocationId] = useState<string | undefined>();
   const [addEntry, setAddEntry] = useState<CaptureMode | 'chooser'>();
   const [showHome, setShowHome] = useState(false);
   const [movingItemId, setMovingItemId] = useState<string>();
   const [showAudit, setShowAudit] = useState(false);
+  const [reviewJobId, setReviewJobId] = useState<number>();
   const activeLocationId = state.locations.some((location) => location.id === locationId)
     ? locationId
     : undefined;
@@ -35,6 +37,12 @@ export default function HomeScreen() {
   const visibleItems = useMemo(
     () => selectActiveItems(state, query, activeLocationId),
     [activeLocationId, query, state],
+  );
+
+  const soonSection = eatSoonSection({ query, activeLocationId, itemCount: rotationItems.length });
+  const isCapturing = captureState.jobs.some((job) => job.status === 'analyzing');
+  const reviewJob = captureState.jobs.find(
+    (job) => job.jobId === reviewJobId && job.status === 'ready',
   );
 
   const bottomPadding = Math.max(insets.bottom, Spacing.three) + BottomTabInset + 88;
@@ -72,17 +80,17 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {captureState.status !== 'idle' && (
-            <CaptureStatusCard
-              state={captureState}
-              onReview={() => {
-                if (captureState.status === 'ready') setAddEntry(captureState.mode);
+          {captureState.jobs.length > 0 && (
+            <CaptureStatusList
+              jobs={captureState.jobs}
+              onReview={(job) => {
+                if (job.status === 'ready') {
+                  setReviewJobId(job.jobId);
+                  setAddEntry(job.mode);
+                }
               }}
-              onRetry={(mode) => {
-                clearCapture();
-                setAddEntry(mode);
-              }}
-              onDismiss={clearCapture}
+              onRetry={(job) => retryCapture(job.jobId)}
+              onDismiss={(job) => removeJob(job.jobId)}
             />
           )}
 
@@ -129,13 +137,27 @@ export default function HomeScreen() {
             <ThemedText style={{ color: theme.primary }}>›</ThemedText>
           </Pressable>
 
-          {!query && !activeLocationId && rotationItems.length > 0 && (
+          {soonSection.kind === 'empty' && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeading}>
+                <ThemedText type="sectionTitle">{soonSection.title}</ThemedText>
+              </View>
+              <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <ThemedText style={styles.emptyEmoji}>🗓️</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyCopy}>
+                  {soonSection.message}
+                </ThemedText>
+              </View>
+            </View>
+          )}
+
+          {soonSection.kind === 'list' && (
             <View style={styles.section}>
               <View style={styles.sectionHeading}>
                 <View>
-                  <ThemedText type="sectionTitle">Använd först</ThemedText>
+                  <ThemedText type="sectionTitle">{soonSection.title}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    Försiktig prioritering från märkning och registrerade datum
+                    {soonSection.subtitle}
                   </ThemedText>
                 </View>
                 <View style={[styles.countBadge, { backgroundColor: theme.warningSoft }]}>
@@ -232,12 +254,12 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lägg till med streckkod"
-            disabled={captureState.status !== 'idle'}
+            disabled={isCapturing}
             onPress={() => setAddEntry('barcode')}
             style={({ pressed }) => [
               styles.quickAction,
               { backgroundColor: theme.primary },
-              captureState.status !== 'idle' && styles.disabled,
+              isCapturing && styles.disabled,
               pressed && styles.pressed,
             ]}>
             <ThemedText style={styles.quickActionIcon}>▥</ThemedText>
@@ -248,12 +270,12 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lägg till med foto"
-            disabled={captureState.status !== 'idle'}
+            disabled={isCapturing}
             onPress={() => setAddEntry('photo')}
             style={({ pressed }) => [
               styles.moreButton,
               { backgroundColor: theme.surface, borderColor: theme.border },
-              captureState.status !== 'idle' && styles.disabled,
+              isCapturing && styles.disabled,
               pressed && styles.pressed,
             ]}>
             <ThemedText style={styles.quickActionIcon}>📷</ThemedText>
@@ -261,12 +283,12 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lägg till eller ändra med rösten"
-            disabled={captureState.status !== 'idle'}
+            disabled={isCapturing}
             onPress={() => setAddEntry('voice')}
             style={({ pressed }) => [
               styles.moreButton,
               { backgroundColor: theme.surface, borderColor: theme.border },
-              captureState.status !== 'idle' && styles.disabled,
+              isCapturing && styles.disabled,
               pressed && styles.pressed,
             ]}>
             <ThemedText style={styles.quickActionIcon}>🎙️</ThemedText>
@@ -289,13 +311,14 @@ export default function HomeScreen() {
         <AddItemModal
           visible
           initialMode={addEntry === 'chooser' ? undefined : addEntry}
-          initialIntent={
-            captureState.status === 'ready' && addEntry === captureState.mode
-              ? captureState.intent
-              : undefined
-          }
-          onCaptureHandled={clearCapture}
-          onClose={() => setAddEntry(undefined)}
+          initialIntent={reviewJob?.status === 'ready' ? reviewJob.intent : undefined}
+          onCaptureHandled={() => {
+            if (reviewJobId !== undefined) removeJob(reviewJobId);
+          }}
+          onClose={() => {
+            setAddEntry(undefined);
+            setReviewJobId(undefined);
+          }}
         />
       )}
       <MoveItemModal

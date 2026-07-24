@@ -71,12 +71,15 @@ describe('M5 backend security contract', () => {
     expect(helpers).toContain('nextCount > 60');
   });
 
-  it('allows camera-only JSON requests without requiring an audio upload', () => {
+  it('accepts JSON-only capture requests while tolerating legacy multipart audio', () => {
     expect(hooks).toContain('lib.uploadedFiles(e, "audio")');
+    expect(hooks).toContain('lib.audioFileFromBase64');
     expect(helpers).toContain('function uploadedFiles(e, field)');
+    expect(helpers).toContain('function audioFileFromBase64');
     expect(helpers).toContain('startsWith("multipart/form-data")');
     expect(helpers).not.toContain('http: no such file');
-    expect(captureService).toContain('if (!input.audioUri)');
+    expect(captureService).toContain('audioBase64');
+    expect(captureService).not.toContain('new FormData');
   });
 
   it('does not publish the private tailnet endpoint in the public web bundle', () => {
