@@ -178,6 +178,23 @@ the private tailnet infrastructure.
   TestFlight processing. The capture backend is unchanged: the dedicated
   loopback Gemma 4 extractor service and Whisper worker on M5 serve all
   interactive captures (verified active, 4–6 s inference per capture).
+- PR #31 (barcode-first add flow with Open Food Facts fallback and shared
+  household product mappings, per-location inventory audits, rotation
+  assessment with distinct date types, enriched history events) was brought
+  up to date by merging main into the branch via a Sonnet subagent following
+  an explicit conflict-decision list: the user-facing section name stays
+  "Ät snart", the capture queue and base64 audio path were kept verbatim,
+  the date-type chips got the numeric auto-formatting and calendar
+  validation, and legacy eatBefore is computed server-side so older builds
+  keep seeing dates. Reviewed line-by-line plus an M5 qwen3-coder-next-80b
+  second opinion (all six external findings falsified against the code);
+  merged as c96285d, closing issues #26–#29.
+- Backend release `20260724161512` with migration
+  `1784745000_add_inventory_workflows.js`, the barcode and audit routes, and
+  the enriched event fields is deployed on M5 and healthy.
+- Version 1.0.0 build 260724161549, containing the barcode, audit, rotation,
+  and rich-history workflows, was archived with the company team and accepted
+  by App Store Connect for TestFlight processing.
 
 ## Remaining handoffs
 
@@ -193,9 +210,11 @@ the private tailnet infrastructure.
 
 ## Next step
 
-Wait for Apple to finish processing build 260724155151 and let automatic
-distribution deliver it to `Familjen`. Then have Magnus rescan several items
-in a row and confirm each one shows its own status card and lands in the
-inventory after review. Sara should retry photo capture with a spoken
-best-before date. Keep correlating `./scripts/show-feedback.sh` with
+Wait for Apple to finish processing build 260724161549 and let automatic
+distribution deliver it to `Familjen`. Then exercise the new workflows in
+real kitchen use: scan a barcode (first miss should fall back to Open Food
+Facts and then remember the household mapping), run a per-location audit,
+rescan several items in a row to confirm each capture keeps its own status
+card, and have Sara retry photo capture with a spoken best-before date.
+Keep correlating `./scripts/show-feedback.sh` with
 `./scripts/show-phone-telemetry.sh`.
