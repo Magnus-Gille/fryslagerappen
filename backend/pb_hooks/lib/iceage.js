@@ -187,7 +187,7 @@ const base64Values = (() => {
 })();
 
 function base64ToBytes(value) {
-  const clean = String(value || "").replace(/[\r\n]/g, "");
+  const clean = String(value || "").replace(/\s+/g, "");
   const stripped = clean.replace(/={1,2}$/, "");
   const bytes = new Uint8Array(Math.floor((stripped.length * 3) / 4));
   let buffer = 0;
