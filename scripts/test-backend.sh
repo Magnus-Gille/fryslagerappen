@@ -379,7 +379,21 @@ test "$(printf '%s' "$voice_response" | jq -r .intent.transcript)" = 'Jag tar ut
 test "$(printf '%s' "$voice_response" | jq -r '.timing.transcriptionMs >= 0')" = 'true'
 test "$(printf '%s' "$voice_response" | jq -r '.timing.inferenceMs >= 0')" = 'true'
 test "$(printf '%s' "$voice_response" | jq -r '.timing.totalMs >= (.timing.transcriptionMs + .timing.inferenceMs)')" = 'true'
-for _ in $(seq 1 59); do
+json_audio_payload="$(jq -cn --arg home "$household_id" \
+  --arg audio "$(base64 <"$test_root/voice.aiff" | tr -d '\n')" \
+  '{homeId:$home,audioBase64:$audio,audioMimeType:"audio/m4a"}')"
+json_voice_response="$(curl -fsS -X POST "$base_url/api/iceage/extract" \
+  -H "authorization: Bearer $owner_token" \
+  -H 'content-type: application/json' \
+  --data "$json_audio_payload")"
+test "$(printf '%s' "$json_voice_response" | jq -r .intent.transcript)" = 'Jag tar ut en testpåse.'
+bad_audio_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "$base_url/api/iceage/extract" \
+  -H "authorization: Bearer $owner_token" \
+  -H 'content-type: application/json' \
+  --data "{\"homeId\":\"$household_id\",\"audioBase64\":\"aGVq\",\"audioMimeType\":\"audio/ogg\"}")"
+test "$bad_audio_status" = '400'
+for _ in $(seq 1 58); do
   extracted_name="$(curl -fsS -X POST "$base_url/api/iceage/extract" \
     -H "authorization: Bearer $owner_token" \
     -H 'content-type: application/json' \

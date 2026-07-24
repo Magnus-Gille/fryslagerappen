@@ -179,6 +179,53 @@ function uploadedFiles(e, field) {
   return e.findUploadedFiles(field);
 }
 
+const base64Values = (() => {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const values = {};
+  for (let index = 0; index < alphabet.length; index++) values[alphabet[index]] = index;
+  return values;
+})();
+
+function base64ToBytes(value) {
+  const clean = String(value || "").replace(/\s+/g, "");
+  const stripped = clean.replace(/={1,2}$/, "");
+  const bytes = new Uint8Array(Math.floor((stripped.length * 3) / 4));
+  let buffer = 0;
+  let bits = 0;
+  let position = 0;
+  for (let index = 0; index < stripped.length; index++) {
+    const part = base64Values[stripped[index]];
+    if (part === undefined) throw new BadRequestError("Ogiltigt ljudklipp.");
+    buffer = (buffer << 6) | part;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes[position++] = (buffer >> bits) & 0xff;
+    }
+  }
+  return bytes;
+}
+
+const audioExtensions = {
+  "audio/m4a": "m4a",
+  "audio/mp4": "m4a",
+  "audio/x-m4a": "m4a",
+  "audio/aac": "aac",
+  "audio/webm": "webm",
+  "audio/wav": "wav",
+  "audio/aiff": "aiff",
+};
+
+// JSON alternative to the multipart "audio" field: the iOS client sends the
+// recording as base64 because React Native multipart uploads proved unreliable.
+function audioFileFromBase64(audioBase64, mimeType) {
+  const extension = audioExtensions[String(mimeType || "").toLowerCase()];
+  if (!extension) throw new BadRequestError("Ljudformatet stöds inte.");
+  const bytes = base64ToBytes(audioBase64);
+  if (bytes.length === 0) throw new BadRequestError("Ogiltigt ljudklipp.");
+  return $filesystem.fileFromBytes(bytes, "inventory." + extension);
+}
+
 function text(value, label, max) {
   const result = String(value || "").trim();
   if (!result || result.length > max) {
@@ -341,6 +388,7 @@ module.exports = {
   collections,
   body,
   uploadedFiles,
+  audioFileFromBase64,
   text,
   optionalText,
   date,
