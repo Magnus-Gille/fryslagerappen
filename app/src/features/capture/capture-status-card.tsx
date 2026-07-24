@@ -5,30 +5,56 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-import type { CaptureAnalysisMode, CaptureAnalysisState } from './capture-analysis-state';
+import type { CaptureJob } from './capture-analysis-state';
 
-export function CaptureStatusCard({
-  state,
+export function CaptureStatusList({
+  jobs,
   onReview,
   onRetry,
   onDismiss,
 }: {
-  state: Exclude<CaptureAnalysisState, { status: 'idle' }>;
+  jobs: CaptureJob[];
+  onReview: (job: CaptureJob) => void;
+  onRetry: (job: CaptureJob) => void;
+  onDismiss: (job: CaptureJob) => void;
+}) {
+  return (
+    <View style={styles.list}>
+      {jobs.map((job) => (
+        <CaptureStatusCard
+          key={job.jobId}
+          job={job}
+          onReview={() => onReview(job)}
+          onRetry={() => onRetry(job)}
+          onDismiss={() => onDismiss(job)}
+        />
+      ))}
+    </View>
+  );
+}
+
+function CaptureStatusCard({
+  job,
+  onReview,
+  onRetry,
+  onDismiss,
+}: {
+  job: CaptureJob;
   onReview: () => void;
-  onRetry: (mode: CaptureAnalysisMode) => void;
+  onRetry: () => void;
   onDismiss: () => void;
 }) {
   const theme = useTheme();
-  const [clock, setClock] = useState(state.startedAt);
+  const [clock, setClock] = useState(job.startedAt);
 
   useEffect(() => {
-    if (state.status !== 'analyzing') return;
+    if (job.status !== 'analyzing') return;
     const timer = setInterval(() => setClock(Date.now()), 1_000);
     return () => clearInterval(timer);
-  }, [state.status]);
+  }, [job.status]);
 
-  if (state.status === 'analyzing') {
-    const elapsed = Math.max(0, Math.floor((clock - state.startedAt) / 1_000));
+  if (job.status === 'analyzing') {
+    const elapsed = Math.max(0, Math.floor((clock - job.startedAt) / 1_000));
     return (
       <View
         accessibilityLiveRegion="polite"
@@ -44,7 +70,8 @@ export function CaptureStatusCard({
     );
   }
 
-  if (state.status === 'ready') {
+  if (job.status === 'ready') {
+    const title = job.intent.name ? `Förslag klart: ${job.intent.name}` : 'Förslaget är klart';
     return (
       <Pressable
         accessibilityRole="button"
@@ -57,7 +84,7 @@ export function CaptureStatusCard({
         ]}>
         <ThemedText style={styles.icon}>✓</ThemedText>
         <View style={styles.copy}>
-          <ThemedText type="smallBold">Förslaget är klart</ThemedText>
+          <ThemedText type="smallBold">{title}</ThemedText>
           <ThemedText type="caption" themeColor="textSecondary">
             Tryck för att granska och spara
           </ThemedText>
@@ -73,10 +100,10 @@ export function CaptureStatusCard({
       style={[styles.errorCard, { backgroundColor: theme.warningSoft, borderColor: theme.warningText }]}>
       <View style={styles.errorCopy}>
         <ThemedText type="smallBold" style={{ color: theme.warningText }}>Tolkningen misslyckades</ThemedText>
-        <ThemedText type="caption" style={{ color: theme.warningText }}>{state.message}</ThemedText>
+        <ThemedText type="caption" style={{ color: theme.warningText }}>{job.message}</ThemedText>
       </View>
       <View style={styles.actions}>
-        <Pressable accessibilityRole="button" onPress={() => onRetry(state.mode)}>
+        <Pressable accessibilityRole="button" onPress={onRetry}>
           <ThemedText type="smallBold" style={{ color: theme.primary }}>Försök igen</ThemedText>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={onDismiss}>
@@ -88,6 +115,7 @@ export function CaptureStatusCard({
 }
 
 const styles = StyleSheet.create({
+  list: { gap: Spacing.two },
   card: {
     minHeight: 68,
     borderWidth: 1,

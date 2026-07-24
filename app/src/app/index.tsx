@@ -4,7 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ThemedText } from '@/components/themed-text';
 import { useCaptureAnalysis } from '@/features/capture/capture-analysis-provider';
-import { CaptureStatusCard } from '@/features/capture/capture-status-card';
+import { CaptureStatusList } from '@/features/capture/capture-status-card';
 import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { AddItemModal, type CaptureMode } from '@/features/inventory/add-item-modal';
 import { eatSoonSection } from '@/features/inventory/eat-soon-section';
@@ -21,12 +21,13 @@ export default function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { state, eatSoonItems, syncStatus, takeOne, moveItem, consumeItem } = useInventory();
-  const { state: captureState, retryCapture, clearCapture } = useCaptureAnalysis();
+  const { state: captureState, retryCapture, removeJob } = useCaptureAnalysis();
   const [query, setQuery] = useState('');
   const [locationId, setLocationId] = useState<string | undefined>();
   const [addEntry, setAddEntry] = useState<CaptureMode | 'chooser'>();
   const [showHome, setShowHome] = useState(false);
   const [movingItemId, setMovingItemId] = useState<string>();
+  const [reviewJobId, setReviewJobId] = useState<number>();
   const activeLocationId = state.locations.some((location) => location.id === locationId)
     ? locationId
     : undefined;
@@ -37,6 +38,10 @@ export default function HomeScreen() {
   );
 
   const soonSection = eatSoonSection({ query, activeLocationId, itemCount: eatSoonItems.length });
+  const isCapturing = captureState.jobs.some((job) => job.status === 'analyzing');
+  const reviewJob = captureState.jobs.find(
+    (job) => job.jobId === reviewJobId && job.status === 'ready',
+  );
 
   const bottomPadding = Math.max(insets.bottom, Spacing.three) + BottomTabInset + 88;
 
@@ -73,21 +78,17 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {captureState.status !== 'idle' && (
-            <CaptureStatusCard
-              state={captureState}
-              onReview={() => {
-                if (captureState.status === 'ready') setAddEntry(captureState.mode);
+          {captureState.jobs.length > 0 && (
+            <CaptureStatusList
+              jobs={captureState.jobs}
+              onReview={(job) => {
+                if (job.status === 'ready') {
+                  setReviewJobId(job.jobId);
+                  setAddEntry(job.mode);
+                }
               }}
-              onRetry={(mode) => {
-                // The failed job keeps its photo/voice input, so a retry
-                // resubmits directly. Reopening the capture sheet is only the
-                // fallback when another job already runs.
-                if (retryCapture()) return;
-                clearCapture();
-                setAddEntry(mode);
-              }}
-              onDismiss={clearCapture}
+              onRetry={(job) => retryCapture(job.jobId)}
+              onDismiss={(job) => removeJob(job.jobId)}
             />
           )}
 
@@ -236,12 +237,12 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lägg till med foto"
-            disabled={captureState.status !== 'idle'}
+            disabled={isCapturing}
             onPress={() => setAddEntry('photo')}
             style={({ pressed }) => [
               styles.quickAction,
               { backgroundColor: theme.primary },
-              captureState.status !== 'idle' && styles.disabled,
+              isCapturing && styles.disabled,
               pressed && styles.pressed,
             ]}>
             <ThemedText style={styles.quickActionIcon}>📷</ThemedText>
@@ -252,13 +253,13 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lägg till eller ändra med rösten"
-            disabled={captureState.status !== 'idle'}
+            disabled={isCapturing}
             onPress={() => setAddEntry('voice')}
             style={({ pressed }) => [
               styles.quickAction,
               styles.quickActionSecondary,
               { backgroundColor: theme.surface, borderColor: theme.border },
-              captureState.status !== 'idle' && styles.disabled,
+              isCapturing && styles.disabled,
               pressed && styles.pressed,
             ]}>
             <ThemedText style={styles.quickActionIcon}>🎙️</ThemedText>
@@ -284,13 +285,14 @@ export default function HomeScreen() {
         <AddItemModal
           visible
           initialMode={addEntry === 'chooser' ? undefined : addEntry}
-          initialIntent={
-            captureState.status === 'ready' && addEntry === captureState.mode
-              ? captureState.intent
-              : undefined
-          }
-          onCaptureHandled={clearCapture}
-          onClose={() => setAddEntry(undefined)}
+          initialIntent={reviewJob?.status === 'ready' ? reviewJob.intent : undefined}
+          onCaptureHandled={() => {
+            if (reviewJobId !== undefined) removeJob(reviewJobId);
+          }}
+          onClose={() => {
+            setAddEntry(undefined);
+            setReviewJobId(undefined);
+          }}
         />
       )}
       <MoveItemModal

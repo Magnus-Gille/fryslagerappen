@@ -22,8 +22,8 @@ import { captureFailureMessage } from './capture-upload';
 type CaptureAnalysisContextValue = {
   state: CaptureAnalysisState;
   startCapture: (input: CaptureAnalysisInput) => boolean;
-  retryCapture: () => boolean;
-  clearCapture: () => void;
+  retryCapture: (jobId: number) => boolean;
+  removeJob: (jobId: number) => void;
 };
 
 const CaptureAnalysisContext = createContext<CaptureAnalysisContextValue | null>(null);
@@ -81,19 +81,24 @@ export function CaptureAnalysisProvider({ children }: PropsWithChildren) {
     [homeId],
   );
 
-  const retryCapture = useCallback(() => {
-    if (state.status !== 'error') return false;
-    return startCapture(state.input);
-  }, [startCapture, state]);
+  const retryCapture = useCallback(
+    (jobId: number) => {
+      const job = state.jobs.find((candidate) => candidate.jobId === jobId);
+      if (!job || job.status !== 'error') return false;
+      const ok = startCapture(job.input);
+      if (ok) dispatch({ type: 'removed', jobId });
+      return ok;
+    },
+    [startCapture, state],
+  );
 
-  const clearCapture = useCallback(() => {
-    if (activeJobId.current !== undefined) return;
-    dispatch({ type: 'cleared' });
+  const removeJob = useCallback((jobId: number) => {
+    dispatch({ type: 'removed', jobId });
   }, []);
 
   const value = useMemo(
-    () => ({ state, startCapture, retryCapture, clearCapture }),
-    [clearCapture, retryCapture, startCapture, state],
+    () => ({ state, startCapture, retryCapture, removeJob }),
+    [removeJob, retryCapture, startCapture, state],
   );
 
   return (
