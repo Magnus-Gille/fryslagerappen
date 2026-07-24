@@ -1,7 +1,12 @@
 import type { CaptureIntent } from './capture-intent';
-import type { CaptureTiming } from './capture-service';
+import type { CapturePhoto, CaptureTiming } from './capture-service';
 
 export type CaptureAnalysisMode = 'photo' | 'voice';
+
+export type CaptureAnalysisInput = {
+  photo?: CapturePhoto;
+  audioUri?: string;
+};
 
 export type CaptureAnalysisState =
   | { status: 'idle' }
@@ -10,6 +15,7 @@ export type CaptureAnalysisState =
       jobId: number;
       mode: CaptureAnalysisMode;
       startedAt: number;
+      input: CaptureAnalysisInput;
     }
   | {
       status: 'ready';
@@ -27,6 +33,9 @@ export type CaptureAnalysisState =
       startedAt: number;
       completedAt: number;
       message: string;
+      // Retained so a failed job can be retried without redoing the photo or
+      // the voice clip.
+      input: CaptureAnalysisInput;
     };
 
 export type CaptureAnalysisAction =
@@ -35,6 +44,7 @@ export type CaptureAnalysisAction =
       jobId: number;
       mode: CaptureAnalysisMode;
       startedAt: number;
+      input: CaptureAnalysisInput;
     }
   | {
       type: 'succeeded';
@@ -64,6 +74,7 @@ export function captureAnalysisReducer(
       jobId: action.jobId,
       mode: action.mode,
       startedAt: action.startedAt,
+      input: action.input,
     };
   }
   if (state.status !== 'analyzing' || state.jobId !== action.jobId) return state;
@@ -85,5 +96,6 @@ export function captureAnalysisReducer(
     startedAt: state.startedAt,
     completedAt: action.completedAt,
     message: action.message,
+    input: state.input,
   };
 }

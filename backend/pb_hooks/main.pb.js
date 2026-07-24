@@ -402,12 +402,18 @@ routerAdd("POST", "/api/iceage/extract", (e) => {
   }
   const audioFiles = lib.uploadedFiles(e, "audio");
   if (audioFiles.length > 1) throw new BadRequestError("Skicka högst ett ljudklipp.");
-  if (!photoBase64 && audioFiles.length === 0) {
+  const audioBase64 = String(body.audioBase64 || "");
+  if (audioBase64.length > 4_000_000) throw new ApiError(413, "Ljudklippet är för stort.");
+  let audio = audioFiles.length === 1 ? audioFiles[0] : null;
+  if (!audio && audioBase64) {
+    audio = lib.audioFileFromBase64(audioBase64, String(body.audioMimeType || "audio/m4a"));
+  }
+  if (!photoBase64 && !audio) {
     throw new BadRequestError("Ta en bild eller spela in en beskrivning.");
   }
   lib.consumeExtractionQuota(e.app, e.auth.id);
   const transcriptionStartedAt = Date.now();
-  const transcript = audioFiles.length === 1 ? lib.transcribe(audioFiles[0]) : "";
+  const transcript = audio ? lib.transcribe(audio) : "";
   const transcriptionMs = Date.now() - transcriptionStartedAt;
   if (!photoBase64 && !transcript) throw new BadRequestError("Ta en bild eller spela in en beskrivning.");
 

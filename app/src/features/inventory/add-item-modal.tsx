@@ -18,6 +18,7 @@ import { findLocationId, toAddItemInput, type CaptureIntent } from '@/features/c
 import { addItemFeedbackContext } from '@/features/feedback/feedback-context';
 import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { useTheme } from '@/hooks/use-theme';
+import { dateInputError, formatDateInput } from '@/lib/date-input';
 
 import { useInventory } from './inventory-provider';
 import { storagePlaceLabel } from './storage-place';
@@ -85,6 +86,13 @@ export function AddItemModal({
 
   async function save() {
     if (!form.name.trim()) return;
+    const dateError =
+      dateInputError(form.frozenOn ?? '', 'Lagrad sedan') ??
+      dateInputError(form.eatBefore ?? '', 'Bäst före');
+    if (dateError) {
+      setError(dateError);
+      return;
+    }
     setBusy(true);
     setError(undefined);
     try {
@@ -255,24 +263,33 @@ export function AddItemModal({
                 <Field label="Lagrad sedan" style={styles.column}>
                   <TextInput
                     accessibilityLabel="Lagrad sedan datum"
+                    inputMode="numeric"
                     value={form.frozenOn}
-                    onChangeText={(value) => update('frozenOn', value)}
+                    onChangeText={(value) => update('frozenOn', formatDateInput(value))}
                     placeholder="ÅÅÅÅ-MM-DD"
                     placeholderTextColor={theme.textTertiary}
                     style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                   />
                 </Field>
-                <Field label="Prioritera före" style={styles.column}>
+                <Field label="Bäst före" style={styles.column}>
                   <TextInput
-                    accessibilityLabel="Prioritera före datum"
+                    accessibilityLabel="Bäst före datum"
+                    inputMode="numeric"
                     value={form.eatBefore}
-                    onChangeText={(value) => update('eatBefore', value)}
-                    placeholder="Valfritt"
+                    onChangeText={(value) => {
+                      update('eatBefore', formatDateInput(value));
+                      if (form.dateSource === 'none') update('dateSource', 'manual');
+                    }}
+                    placeholder="ÅÅÅÅ-MM-DD"
                     placeholderTextColor={theme.textTertiary}
                     style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                   />
                 </Field>
               </View>
+              <ThemedText type="caption" themeColor="textSecondary">
+                Skriv datumet som står på förpackningen – siffrorna räcker, strecken fylls i
+                automatiskt. Varan dyker upp under “Ät snart” när datumet närmar sig.
+              </ThemedText>
 
               {form.dateSource === 'estimated' && (
                 <View style={[styles.notice, { backgroundColor: theme.warningSoft }]}>

@@ -3,6 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import {
   captureAnalysisReducer,
   initialCaptureAnalysisState,
+  type CaptureAnalysisInput,
 } from '@/features/capture/capture-analysis-state';
 import type { CaptureIntent } from '@/features/capture/capture-intent';
 
@@ -23,6 +24,12 @@ const intent: CaptureIntent = {
   uncertainFields: [],
 };
 
+const voiceInput: CaptureAnalysisInput = { audioUri: 'file:///caches/recording-1.m4a' };
+const photoInput: CaptureAnalysisInput = {
+  photo: { base64: 'aGVq', mimeType: 'image/jpeg', uri: 'file:///caches/photo-1.jpg' },
+  audioUri: 'file:///caches/recording-2.m4a',
+};
+
 describe('capture analysis state', () => {
   it('keeps analysis alive as a background job until the result is reviewed', () => {
     const analyzing = captureAnalysisReducer(initialCaptureAnalysisState, {
@@ -30,6 +37,7 @@ describe('capture analysis state', () => {
       jobId: 7,
       mode: 'voice',
       startedAt: 1_000,
+      input: voiceInput,
     });
     const ready = captureAnalysisReducer(analyzing, {
       type: 'succeeded',
@@ -62,6 +70,7 @@ describe('capture analysis state', () => {
       jobId: 9,
       mode: 'photo',
       startedAt: 2_000,
+      input: photoInput,
     });
 
     expect(
@@ -74,12 +83,13 @@ describe('capture analysis state', () => {
     ).toBe(current);
   });
 
-  it('keeps a failed job retryable without retaining raw media', () => {
+  it('keeps the captured input on failure so a retry needs no new photo or clip', () => {
     const analyzing = captureAnalysisReducer(initialCaptureAnalysisState, {
       type: 'started',
       jobId: 3,
       mode: 'photo',
       startedAt: 1_000,
+      input: photoInput,
     });
     const failed = captureAnalysisReducer(analyzing, {
       type: 'failed',
@@ -95,8 +105,24 @@ describe('capture analysis state', () => {
       startedAt: 1_000,
       completedAt: 5_000,
       message: 'Tolkningen misslyckades.',
+      input: photoInput,
     });
-    expect(failed).not.toHaveProperty('photo');
-    expect(failed).not.toHaveProperty('audioUri');
+  });
+
+  it('drops the retained input when the job is dismissed', () => {
+    const failed = captureAnalysisReducer(
+      captureAnalysisReducer(initialCaptureAnalysisState, {
+        type: 'started',
+        jobId: 4,
+        mode: 'voice',
+        startedAt: 1_000,
+        input: voiceInput,
+      }),
+      { type: 'failed', jobId: 4, completedAt: 2_000, message: 'Nätfel.' },
+    );
+
+    expect(captureAnalysisReducer(failed, { type: 'cleared' })).toEqual(
+      initialCaptureAnalysisState,
+    );
   });
 });

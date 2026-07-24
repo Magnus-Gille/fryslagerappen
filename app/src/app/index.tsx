@@ -7,6 +7,7 @@ import { useCaptureAnalysis } from '@/features/capture/capture-analysis-provider
 import { CaptureStatusCard } from '@/features/capture/capture-status-card';
 import { FeedbackOverlay } from '@/features/feedback/feedback-overlay';
 import { AddItemModal, type CaptureMode } from '@/features/inventory/add-item-modal';
+import { eatSoonSection } from '@/features/inventory/eat-soon-section';
 import { InventoryCard } from '@/features/inventory/inventory-card';
 import { HomeMenu } from '@/features/home/home-menu';
 import { selectActiveItems } from '@/features/inventory/inventory-state';
@@ -20,7 +21,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { state, eatSoonItems, syncStatus, takeOne, moveItem, consumeItem } = useInventory();
-  const { state: captureState, clearCapture } = useCaptureAnalysis();
+  const { state: captureState, retryCapture, clearCapture } = useCaptureAnalysis();
   const [query, setQuery] = useState('');
   const [locationId, setLocationId] = useState<string | undefined>();
   const [addEntry, setAddEntry] = useState<CaptureMode | 'chooser'>();
@@ -34,6 +35,8 @@ export default function HomeScreen() {
     () => selectActiveItems(state, query, activeLocationId),
     [activeLocationId, query, state],
   );
+
+  const soonSection = eatSoonSection({ query, activeLocationId, itemCount: eatSoonItems.length });
 
   const bottomPadding = Math.max(insets.bottom, Spacing.three) + BottomTabInset + 88;
 
@@ -77,6 +80,10 @@ export default function HomeScreen() {
                 if (captureState.status === 'ready') setAddEntry(captureState.mode);
               }}
               onRetry={(mode) => {
+                // The failed job keeps its photo/voice input, so a retry
+                // resubmits directly. Reopening the capture sheet is only the
+                // fallback when another job already runs.
+                if (retryCapture()) return;
                 clearCapture();
                 setAddEntry(mode);
               }}
@@ -112,13 +119,27 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
 
-          {!query && !activeLocationId && eatSoonItems.length > 0 && (
+          {soonSection.kind === 'empty' && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeading}>
+                <ThemedText type="sectionTitle">{soonSection.title}</ThemedText>
+              </View>
+              <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <ThemedText style={styles.emptyEmoji}>🗓️</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyCopy}>
+                  {soonSection.message}
+                </ThemedText>
+              </View>
+            </View>
+          )}
+
+          {soonSection.kind === 'list' && (
             <View style={styles.section}>
               <View style={styles.sectionHeading}>
                 <View>
-                  <ThemedText type="sectionTitle">Ät snart</ThemedText>
+                  <ThemedText type="sectionTitle">{soonSection.title}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    Planeringsstöd för de närmaste 30 dagarna
+                    {soonSection.subtitle}
                   </ThemedText>
                 </View>
                 <View style={[styles.countBadge, { backgroundColor: theme.warningSoft }]}>
