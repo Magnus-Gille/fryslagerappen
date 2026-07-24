@@ -8,35 +8,18 @@ export type CaptureAnalysisInput = {
   audioUri?: string;
 };
 
-export type CaptureAnalysisState =
-  | { status: 'idle' }
-  | {
-      status: 'analyzing';
-      jobId: number;
-      mode: CaptureAnalysisMode;
-      startedAt: number;
-      input: CaptureAnalysisInput;
-    }
-  | {
-      status: 'ready';
-      jobId: number;
-      mode: CaptureAnalysisMode;
-      startedAt: number;
-      completedAt: number;
-      intent: CaptureIntent;
-      timing?: CaptureTiming;
-    }
-  | {
-      status: 'error';
-      jobId: number;
-      mode: CaptureAnalysisMode;
-      startedAt: number;
-      completedAt: number;
-      message: string;
-      // Retained so a failed job can be retried without redoing the photo or
-      // the voice clip.
-      input: CaptureAnalysisInput;
-    };
+export type CaptureJob = {
+  jobId: number;
+  mode: CaptureAnalysisMode;
+  startedAt: number;
+  input: CaptureAnalysisInput;
+} & (
+  | { status: 'analyzing' }
+  | { status: 'ready'; completedAt: number; intent: CaptureIntent; timing?: CaptureTiming }
+  | { status: 'error'; completedAt: number; message: string }
+);
+
+export type CaptureAnalysisState = { jobs: CaptureJob[] };
 
 export type CaptureAnalysisAction =
   | {
@@ -59,43 +42,69 @@ export type CaptureAnalysisAction =
       completedAt: number;
       message: string;
     }
-  | { type: 'cleared' };
+  | { type: 'removed'; jobId: number };
 
-export const initialCaptureAnalysisState: CaptureAnalysisState = { status: 'idle' };
+export const initialCaptureAnalysisState: CaptureAnalysisState = { jobs: [] };
 
 export function captureAnalysisReducer(
   state: CaptureAnalysisState,
   action: CaptureAnalysisAction,
 ): CaptureAnalysisState {
-  if (action.type === 'cleared') return initialCaptureAnalysisState;
   if (action.type === 'started') {
     return {
-      status: 'analyzing',
-      jobId: action.jobId,
-      mode: action.mode,
-      startedAt: action.startedAt,
-      input: action.input,
+      jobs: [
+        ...state.jobs,
+        {
+          status: 'analyzing',
+          jobId: action.jobId,
+          mode: action.mode,
+          startedAt: action.startedAt,
+          input: action.input,
+        },
+      ],
     };
   }
-  if (state.status !== 'analyzing' || state.jobId !== action.jobId) return state;
+
+  if (action.type === 'removed') {
+    if (!state.jobs.some((job) => job.jobId === action.jobId)) return state;
+    return { jobs: state.jobs.filter((job) => job.jobId !== action.jobId) };
+  }
+
+  const job = state.jobs.find((candidate) => candidate.jobId === action.jobId);
+  if (!job || job.status !== 'analyzing') return state;
+
   if (action.type === 'succeeded') {
     return {
-      status: 'ready',
-      jobId: state.jobId,
-      mode: state.mode,
-      startedAt: state.startedAt,
-      completedAt: action.completedAt,
-      intent: action.intent,
-      timing: action.timing,
+      jobs: state.jobs.map((candidate) =>
+        candidate.jobId === action.jobId
+          ? {
+              status: 'ready',
+              jobId: job.jobId,
+              mode: job.mode,
+              startedAt: job.startedAt,
+              input: job.input,
+              completedAt: action.completedAt,
+              intent: action.intent,
+              timing: action.timing,
+            }
+          : candidate,
+      ),
     };
   }
+
   return {
-    status: 'error',
-    jobId: state.jobId,
-    mode: state.mode,
-    startedAt: state.startedAt,
-    completedAt: action.completedAt,
-    message: action.message,
-    input: state.input,
+    jobs: state.jobs.map((candidate) =>
+      candidate.jobId === action.jobId
+        ? {
+            status: 'error',
+            jobId: job.jobId,
+            mode: job.mode,
+            startedAt: job.startedAt,
+            input: job.input,
+            completedAt: action.completedAt,
+            message: action.message,
+          }
+        : candidate,
+    ),
   };
 }
