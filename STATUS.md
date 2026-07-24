@@ -160,7 +160,24 @@ the private tailnet infrastructure.
   with the new JSON audio test.
 - Version 1.0.0 build 260724090948, containing the feedback fixes and the
   expo-dev-client 57.0.9 alignment, was archived with the company team and
-  accepted by App Store Connect for TestFlight processing.
+  accepted by App Store Connect for TestFlight processing. Telemetry from
+  Magnus's phone on this build confirms photo_voice extraction now succeeds
+  end-to-end (server-side transcription timings present).
+- Magnus's pilot feedback (2026-07-24, issue #37) — three scanned items but
+  only one visible in inventory — was root-caused via telemetry: the
+  single-slot capture state silently replaced an unreviewed ready suggestion
+  when the next capture started. PR #38 turns the state into a job queue with
+  per-job status cards (analyzing/ready/error), review, retained-input retry,
+  and dismiss; nothing is ever dropped silently. Implemented by a Sonnet
+  subagent in an isolated worktree from a detailed spec, independently
+  verified (79 Jest tests, tsc, expo lint), and reviewed by M5
+  qwen3-coder-next-80b plus line-by-line self-review (all external findings
+  falsified against the code).
+- Version 1.0.0 build 260724155151, containing the capture-queue fix, was
+  archived with the company team and accepted by App Store Connect for
+  TestFlight processing. The capture backend is unchanged: the dedicated
+  loopback Gemma 4 extractor service and Whisper worker on M5 serve all
+  interactive captures (verified active, 4–6 s inference per capture).
 
 ## Remaining handoffs
 
@@ -176,9 +193,9 @@ the private tailnet infrastructure.
 
 ## Next step
 
-Wait for Apple to finish processing build 260724090948 and let automatic
-distribution deliver it to `Familjen`. Then have Sara update in TestFlight and
-retry the exact flow that failed: photo capture plus a spoken best-before
-date. Confirm through `./scripts/show-phone-telemetry.sh` that the
-photo_voice extraction succeeds on her device, and keep reading
-`./scripts/show-feedback.sh` for new comments.
+Wait for Apple to finish processing build 260724155151 and let automatic
+distribution deliver it to `Familjen`. Then have Magnus rescan several items
+in a row and confirm each one shows its own status card and lands in the
+inventory after review. Sara should retry photo capture with a spoken
+best-before date. Keep correlating `./scripts/show-feedback.sh` with
+`./scripts/show-phone-telemetry.sh`.
